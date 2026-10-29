@@ -1,0 +1,9 @@
+{
+  "id": "content-studio",
+  "name": "콘텐츠 스튜디오",
+  "version": "0.2.0",
+  "minAppVersion": "1.5.0",
+  "description": "아이디어 노트 하나로 메시지를 찾고, 코르크판에 재료를 붙여 가며 글의 뼈대를 모읍니다.",
+  "author": "Jake",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,1444 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>콘텐츠 스튜디오 — 코르크판 시안 (kraken)</title>
+<script>
+  // 첫 페인트 전에 테마 결정: ?theme= 가 우선, 없으면 저장값, 없으면 시스템 설정
+  (function () {
+    var t = null;
+    try { t = new URLSearchParams(location.search).get('theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') { t = null; try { t = localStorage.getItem('cs-theme'); } catch (e) {} }
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<style>
+/* ───────────────────────── 글꼴 (로컬 번들, 외부 CDN 없음) ───────────────────────── */
+@font-face { font-family: "Gaegu"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/Gaegu-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Gaegu"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/Gaegu-Bold.ttf") format("truetype"); }
+
+/* ───────────────────────── 1) 디자인 토큰 ───────────────────────── */
+:root {
+  /* 서체: 필기체는 현재 메시지·포스트잇·제품명에만 */
+  --font-hand: "Gaegu", "Nanum Pen Script", cursive;
+  --font-body: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --fs-body: 16px;     /* 본문 ≥ 16 */
+  --fs-small: 14px;    /* 보조 설명 ≥ 14 (포스트잇 안에는 쓰지 않음) */
+  --fs-note: 18px;     /* 포스트잇 본문 */
+  --fs-note-head: 21px;
+  --fs-note-meta: 16px;/* 포스트잇 출처·배지·연결 문구: 최소 16 */
+  --fs-title: 28px;    /* 화면 제목: 본문 서체 굵게 */
+  --fs-message: 32px;  /* 현재 메시지 (480px: 26) */
+
+  /* 간격 4px 기준 */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  /* 선 굵기 2가지 */
+  --bw: 1px; --bw-strong: 1.5px;
+  /* 반경 3가지 */
+  --r1: 4px; --r2: 8px; --r3: 14px;
+
+  /* 종이(라이트) */
+  --paper: #F6F1E9;
+  --surface: #FFFDF9;       /* 원고지 면 */
+  --sunken: #EFE8DC;
+  --line: rgba(43, 38, 33, .08);
+  --line-strong: rgba(43, 38, 33, .14);
+  --rule: rgba(43, 38, 33, .07);   /* 원고지 가는 줄 */
+  --ink: #2B2621;
+  --ink-2: #6F665C;
+  --ink-3: #A39A8E;
+  --accent: #B83A32;       /* 붉은 실 — 유일한 포인트 색 */
+  --accent-pin: #8F2A24;
+  --accent-soft: rgba(184, 58, 50, .14);
+  --on-accent: #FFFFFF;
+  --focus: #B83A32;
+
+  /* 코르크 */
+  --cork: #C9A878; --cork-a: #B8955F; --cork-b: #D9BE94; --cork-frame: #8A6A43;
+  --lamp: linear-gradient(transparent, transparent);
+
+  /* 포스트잇 (다크에서도 밝은 종이) */
+  --note-yellow: #FFE79A; --note-pink: #FFC9C0; --note-blue: #CFE3F2; --note-green: #D9E8B8;
+  --note-ink: #2B2621; --note-ink-2: #4A4037; --note-accent-ink: #74201B;
+  --badge-bg: #2B2621; --badge-ink: #FFF6D6;      /* 어느 포스트잇 색 위에서도 4.5:1 이상 */
+  --badge-pin-bg: #8F2A24; --badge-pin-ink: #FFFFFF;
+
+  --thread: #B83A32;
+  --thread-shadow: rgba(60, 20, 15, .28);
+
+  --shadow-note: 0 1px 2px rgba(60, 42, 25, .12), 0 8px 18px -10px rgba(60, 42, 25, .28);
+  --shadow-lift: 0 2px 4px rgba(60, 42, 25, .14), 0 16px 26px -12px rgba(60, 42, 25, .38);
+  --shadow-sheet: 0 24px 60px -20px rgba(30, 20, 10, .45);
+  --shadow-face: 0 1px 0 rgba(43, 38, 33, .04), 0 10px 24px -18px rgba(60, 42, 25, .35);
+  --scrim: rgba(43, 38, 33, .38);
+
+  /* 질감: 코르크·바탕 종이 (읽는 면 위에는 깔지 않음) */
+  --noise-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .27 0 0 0 0 .18 0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --noise-cork: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .22 0 0 0 0 .14 0 0 0 0 .07 0 0 0 .55 -.06'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #141312;
+  --surface: #211F1C;       /* 어두운 원고지 면: 배경보다 한 단계 밝고 따뜻함 */
+  --sunken: #2A2723;
+  --line: rgba(255, 255, 255, .08);
+  --line-strong: rgba(255, 255, 255, .13);
+  --rule: rgba(255, 244, 225, .06);
+  --ink: #EDEAE5;
+  --ink-2: #A29D95;
+  --ink-3: #6B6761;
+  --accent: #E0675C;
+  --accent-pin: #C04A40;
+  --accent-soft: rgba(224, 103, 92, .18);
+  --on-accent: #141312;
+  --focus: #E0675C;
+
+  --cork: #4A3B2A; --cork-a: #3C2F21; --cork-b: #5A4733; --cork-frame: #2A2118;
+  --lamp: radial-gradient(520px 420px at 6% 0%, rgba(240, 170, 100, .12), transparent 60%);
+
+  --note-yellow: #E9CF7A; --note-pink: #E3A9A0; --note-blue: #A9C3D6; --note-green: #BBCD97;
+  --thread: #E0675C;
+  --thread-shadow: rgba(0, 0, 0, .5);
+
+  --shadow-note: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 18px -10px rgba(0, 0, 0, .65);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, .45), 0 16px 26px -12px rgba(0, 0, 0, .75);
+  --shadow-sheet: 0 24px 60px -20px rgba(0, 0, 0, .8);
+  --shadow-face: 0 1px 0 rgba(255, 255, 255, .03), 0 10px 24px -16px rgba(0, 0, 0, .8);
+  --scrim: rgba(0, 0, 0, .55);
+  --noise-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .85 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ───────────────────────── 기본 ───────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh;
+  background: var(--noise-paper), var(--paper);
+  color: var(--ink);
+  font: 400 var(--fs-body)/1.55 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+[hidden] { display: none !important; }
+a { color: inherit; }
+kbd {
+  font: 500 13px/1 var(--font-body); padding: 2px 5px; border-radius: var(--r1);
+  border: var(--bw) solid var(--line-strong); background: var(--surface); color: var(--ink-2);
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.shell { container-type: inline-size; container-name: shell; max-width: 1240px; margin: 0 auto; padding: var(--s3) var(--s5) var(--s6); }
+.shell.preview-480 { max-width: 480px; padding-inline: var(--s4); box-shadow: 0 0 0 var(--bw) var(--line-strong); }
+@container shell (max-width: 560px) { .shell-pad { padding-inline: 0; } }
+@media (max-width: 560px) { .shell { padding-inline: var(--s4); } }
+
+/* ───────────────────────── 버튼·칩 ───────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: 38px; padding: 0 var(--s4); border-radius: var(--r2);
+  border: var(--bw) solid var(--line-strong); background: var(--surface); color: var(--ink);
+  font-size: var(--fs-body); font-weight: 500; white-space: nowrap; text-decoration: none;
+  transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--sunken); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-pin); border-color: var(--accent-pin); color: #fff; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--sunken); color: var(--ink); }
+.btn.sm { min-height: 32px; padding: 0 var(--s3); font-size: var(--fs-small); }
+.btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip { display: inline-flex; align-items: center; padding: 0 var(--s3); border-radius: 999px; border: var(--bw) solid var(--line-strong); font-size: var(--fs-small); line-height: 22px; color: var(--ink-2); background: transparent; }
+.chip.cand { background: var(--sunken); }
+.chip.fixed { background: var(--accent-soft); border-color: transparent; color: var(--ink); }
+.chip.pinc { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+/* ───────────────────────── 시안 보기 도구 (제품 UI 아님) ───────────────────────── */
+.devbar { margin-bottom: var(--s3); border: var(--bw) dashed var(--line-strong); border-radius: var(--r2); background: color-mix(in srgb, var(--surface) 70%, transparent); font-size: var(--fs-small); color: var(--ink-2); }
+.devbar > summary { cursor: pointer; padding: var(--s2) var(--s3); font-weight: 600; list-style-position: inside; }
+.devbar .dev-body { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); padding: 0 var(--s3) var(--s2); }
+.devbar .sep { flex: 1; }
+.devbar label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.devbar select { min-height: 30px; border-radius: var(--r1); border: var(--bw) solid var(--line-strong); background: var(--surface); padding: 0 var(--s2); }
+.seg { display: inline-flex; padding: 2px; gap: 2px; border: var(--bw) solid var(--line-strong); border-radius: var(--r2); background: var(--surface); }
+.seg .btn { min-height: 30px; padding: 0 var(--s3); border: 0; border-radius: 6px; background: transparent; font-size: var(--fs-small); color: var(--ink-2); }
+.seg .btn:hover { background: var(--sunken); }
+.seg .btn[aria-pressed="true"], .seg .btn[aria-current="true"] { background: var(--ink); color: var(--paper); }
+
+/* ───────────────────────── 공통 헤더 (규약 §2) ───────────────────────── */
+.apphead { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s3); padding: var(--s2) 0 var(--s3); border-bottom: var(--bw) solid var(--line); margin-bottom: var(--s4); }
+.apphead .back { justify-self: start; padding-left: var(--s2); padding-right: var(--s3); color: var(--ink-2); }
+.apphead .brand { font: 700 22px/1 var(--font-hand); letter-spacing: .01em; white-space: nowrap; }
+.apphead .idea-title { justify-self: end; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink-2); }
+.shell:not([data-now="board"]) .apphead .back, .shell:not([data-now="board"]) .apphead .idea-title { visibility: hidden; }
+@container shell (max-width: 560px) { .apphead { gap: var(--s2); } .apphead .back { padding-inline: var(--s1); } .apphead .brand { font-size: 20px; } }
+
+/* ───────────────────────── 오류 안내 (규약 §6) ───────────────────────── */
+.errbox { display: grid; grid-template-columns: auto 1fr; gap: var(--s3) var(--s4); padding: var(--s4); margin-bottom: var(--s4);
+  border: var(--bw-strong) solid var(--ink-2); border-radius: var(--r2); background: var(--surface); box-shadow: var(--shadow-face); }
+.errbox .err-ic { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--ink); color: var(--paper); }
+.errbox h3 { font-size: 18px; line-height: 1.35; }
+.errbox .cause { color: var(--ink-2); margin-top: var(--s1); }
+.errbox .fix { margin: var(--s3) 0 0; padding-left: 20px; display: grid; gap: var(--s1); }
+.errbox .fix code { font: 500 14px/1.4 ui-monospace, "SF Mono", Menlo, monospace; padding: 1px 6px; border-radius: var(--r1); background: var(--sunken); overflow-wrap: anywhere; }
+.errbox .cont { margin-top: var(--s3); padding-top: var(--s3); border-top: var(--bw) solid var(--line); }
+.errbox .acts { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+
+/* ───────────────────────── 토스트 ───────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: var(--s5); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: var(--s3); max-width: min(560px, calc(100vw - 32px));
+  padding: var(--s3) var(--s4); border-radius: var(--r2);
+  background: var(--ink); color: var(--paper); font-size: var(--fs-small); box-shadow: var(--shadow-sheet);
+  transition: opacity .2s, transform .2s; z-index: 60;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 0; }
+
+/* ───────────────────────── 화면 A/B: 목록·최초 진입 (원고지 면) ───────────────────────── */
+.list-wrap { max-width: 780px; margin: 0 auto; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s4); flex-wrap: wrap; }
+.lh-title { display: flex; align-items: center; gap: var(--s4); }
+.list-head h1 { font: 700 var(--fs-title)/1.25 var(--font-body); }
+.list-head p { color: var(--ink-2); font-size: var(--fs-small); margin-top: var(--s1); }
+.mini-art { position: relative; width: 64px; height: 52px; flex: none; border-radius: var(--r2); border: var(--bw-strong) solid var(--cork-frame);
+  background: var(--lamp), var(--noise-cork), radial-gradient(circle at 20% 30%, var(--cork-a) 0 1.5px, transparent 2px) 0 0/37px 41px, radial-gradient(circle at 70% 60%, var(--cork-b) 0 2px, transparent 2.5px) 0 0/53px 47px, var(--cork); }
+.mini-art i { position: absolute; left: 12px; top: 9px; width: 36px; height: 32px; border-radius: 2px; background: var(--note-yellow); transform: rotate(-3deg); box-shadow: var(--shadow-note); }
+.mini-art i::before { content: ""; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--thread); box-shadow: 0 2px 3px rgba(0,0,0,.3); }
+.face { border: var(--bw) solid var(--line-strong); border-radius: var(--r2); background: var(--surface); box-shadow: var(--shadow-face); }
+.ideas { list-style: none; margin: 0; padding: 0; }
+.idea { display: grid; grid-template-columns: 1fr auto; gap: var(--s2) var(--s4); align-items: center; padding: var(--s4) var(--s5); border-bottom: var(--bw) solid var(--rule); }
+.idea:last-child { border-bottom: 0; }
+.idea:hover { background: var(--sunken); }
+.idea .title { font: 400 24px/1.35 var(--font-hand); text-align: left; border: 0; background: none; padding: 0; color: var(--ink); }
+.idea .title:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--accent); }
+.idea .meta { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); color: var(--ink-2); font-size: var(--fs-small); }
+.idea .go { grid-row: 1 / span 2; grid-column: 2; }
+.stage { display: inline-flex; align-items: center; gap: var(--s2); }
+.stage i { display: inline-flex; gap: 3px; }
+.stage i b { width: 14px; height: 4px; border-radius: 2px; background: var(--line-strong); }
+.stage i b.on { background: var(--accent); }
+.chip.warn { border-color: var(--ink-2); font-weight: 600; color: var(--ink); background: var(--sunken); }
+.new-panel { margin-bottom: var(--s4); }
+.start-options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+@container shell (max-width: 560px) { .start-options { grid-template-columns: 1fr; } .idea { grid-template-columns: 1fr; padding-inline: var(--s4); } .idea .go { grid-row: auto; grid-column: 1; justify-self: start; } }
+.start-opt { display: flex; flex-direction: column; justify-content: flex-start; text-align: left; padding: var(--s4); border-radius: var(--r3); border: var(--bw) solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow-face); }
+.start-opt:hover { background: var(--sunken); }
+.start-opt strong { display: block; font-size: 17px; margin-bottom: var(--s1); }
+.start-opt span { color: var(--ink-2); font-size: var(--fs-small); }
+.start-opt.primary { border-color: var(--accent); box-shadow: inset 0 0 0 var(--bw) var(--accent); }
+.empty-block { text-align: center; padding: var(--s5) var(--s4) var(--s4); }
+.empty-block .mini-art { width: 120px; height: 84px; margin: 0 auto var(--s4); }
+.empty-block .mini-art i { left: 24px; top: 16px; width: 64px; height: 54px; }
+.empty-block .mini-art i::before { width: 14px; height: 14px; top: -8px; margin-left: -7px; }
+.empty-block h2 { font: 700 var(--fs-title)/1.3 var(--font-body); }
+.empty-block p { margin-top: var(--s2); color: var(--ink-2); }
+.start-form { text-align: left; margin-top: var(--s3); padding: var(--s4); border: var(--bw) solid var(--line-strong); border-radius: var(--r3); background: var(--surface); box-shadow: var(--shadow-face); }
+.start-form label { display: block; font-weight: 600; margin-bottom: var(--s2); }
+.start-form .hint { color: var(--ink-2); font-size: var(--fs-small); margin-bottom: var(--s3); }
+.start-form textarea { width: 100%; min-height: 96px; resize: vertical; padding: var(--s3); border-radius: var(--r2); border: var(--bw) solid var(--line-strong); background: var(--paper); line-height: 1.6; }
+.start-form .row { display: flex; gap: var(--s2); justify-content: flex-end; margin-top: var(--s3); }
+
+/* ───────────────────────── 화면 C: 코르크판 — 상단 ───────────────────────── */
+.top { display: grid; gap: var(--s3); margin-bottom: var(--s3); }
+.message { padding: var(--s2) 0 var(--s3); border-bottom: var(--bw) solid var(--line); }
+.message .label { display: flex; align-items: center; gap: var(--s2); color: var(--ink-2); font-size: var(--fs-small); margin-bottom: var(--s1); flex-wrap: wrap; }
+.message .label .sp { flex: 1; }
+.message .text { font: 700 var(--fs-message)/1.25 var(--font-hand); letter-spacing: .005em; overflow-wrap: anywhere; }
+.message .text::before, .message .text::after { color: var(--accent); }
+.message .text::before { content: "“"; } .message .text::after { content: "”"; }
+@container shell (max-width: 560px) { .message .text { font-size: 26px; } }
+.msg-form { display: grid; gap: var(--s2); }
+.msg-form label { font-weight: 600; }
+.msg-form .row { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.msg-form input { flex: 1 1 260px; min-height: 42px; padding: 0 var(--s3); border-radius: var(--r2); border: var(--bw) solid var(--line-strong); background: var(--surface); font-size: 18px; }
+
+.steps { display: flex; align-items: center; gap: 0; list-style: none; margin: 0; padding: 0; flex-wrap: nowrap; }
+.steps li { display: flex; align-items: center; }
+.steps li + li::before { content: ""; width: 14px; height: var(--bw); background: var(--line-strong); margin-inline: var(--s1); }
+.steps a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 var(--s2); border-radius: var(--r2); color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.steps a:hover { background: var(--sunken); color: var(--ink); }
+.steps .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: var(--bw-strong) solid var(--line-strong); font-size: 13px; line-height: 1; font-weight: 600; }
+.steps a.done .n { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.steps a[aria-current="step"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
+.steps a[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.steps-wrap { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+.steps-acts { display: flex; gap: var(--s2); align-items: center; }
+.jump { display: none; }
+@container shell (max-width: 560px) { .research { flex-direction: column; align-items: flex-start; gap: var(--s2); } .research .acts { margin-left: 0; } }
+@container shell (max-width: 560px) {
+  .steps a:not([aria-current]) .nm { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .steps li + li::before { width: 8px; margin-inline: 2px; }
+  .jump { display: inline-flex; }
+}
+
+/* 조사 제안 한 줄 */
+.research { display: flex; align-items: center; gap: var(--s3) var(--s4); flex-wrap: wrap; padding: var(--s3) var(--s4); border-radius: var(--r2); border: var(--bw) solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow-face); }
+.research .q { font-weight: 700; font-size: 18px; }
+.research .sub { color: var(--ink-2); font-size: var(--fs-small); flex: 1 1 220px; min-width: 0; }
+.research .acts { display: flex; gap: var(--s2); margin-left: auto; }
+@container shell (max-width: 560px) { .research .sub { flex: 0 0 auto; } }   /* 세로로 쌓일 때 basis가 높이가 되지 않게 */
+.research[data-state="running"] { border-color: var(--accent); }
+.research .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+
+/* 판 도구줄 + 선택 카드 동작줄 */
+.tools { display: flex; align-items: center; gap: var(--s2) var(--s3); flex-wrap: wrap; margin: var(--s3) 0 var(--s2); }
+.tools .sp { flex: 1; }
+.counts { color: var(--ink-2); font-size: var(--fs-small); }
+.selbar { position: sticky; top: 8px; z-index: 30; display: flex; align-items: center; gap: var(--s2) var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s3); margin-bottom: var(--s3);
+  border-radius: var(--r2); border: var(--bw) solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow-face); min-height: 48px; }
+.selbar .sel-title { flex: 1 1 200px; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selbar .sel-title small { display: block; color: var(--ink-2); font-weight: 400; font-size: var(--fs-small); }
+.selbar .sel-acts { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.selbar.empty-sel { color: var(--ink-2); font-size: var(--fs-small); }
+.selbar .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); }
+.modebar { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); margin-bottom: var(--s3); border-radius: var(--r2); background: var(--accent-soft); font-size: var(--fs-small); font-weight: 500; flex-wrap: wrap; position: sticky; top: 64px; z-index: 29; }
+.modebar > span { flex: 1 1 240px; }
+
+/* ───────────────────────── 코르크판 ───────────────────────── */
+.board-frame {
+  position: relative; border-radius: var(--r2); border: var(--bw-strong) solid var(--cork-frame);
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--cork-frame) 22%, transparent);
+  background: var(--lamp), var(--noise-cork),
+    radial-gradient(circle at 20% 30%, var(--cork-a) 0 1.5px, transparent 2px) 0 0/37px 41px,
+    radial-gradient(circle at 70% 60%, var(--cork-b) 0 2px, transparent 2.5px) 0 0/53px 47px,
+    radial-gradient(circle at 40% 80%, var(--cork-a) 0 1px, transparent 1.5px) 0 0/29px 31px,
+    var(--cork);
+}
+.board-scroll { overflow: hidden; min-height: 420px; border-radius: inherit; }
+.canvas { position: relative; width: 100%; height: 980px; --card-w: 224px; }
+.canvas.animate-pos .card { transition: left .3s ease, top .3s ease, transform .2s ease, box-shadow .2s ease; }
+.threads { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+.threads path { fill: none; stroke-linecap: round; }
+.threads .t-shadow { stroke: var(--thread-shadow); stroke-width: 3; transform: translate(1px, 3px); opacity: .6; }
+.threads .t-line { stroke: var(--thread); stroke-width: 2.5; }
+.threads .t-knot { fill: var(--thread); }
+.threads path.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .7s .15s ease-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* 카드(포스트잇) — 장식은 핀 하나만: 고정=붉은 핀, 보통=없음 */
+.card {
+  --rot: 0deg;
+  position: absolute; left: calc(var(--x) * 1px); top: calc(var(--y) * 1px); z-index: 1;
+  width: var(--card-w); padding: var(--s4) var(--s4) var(--s3);
+  background: var(--note-bg, var(--note-yellow)); color: var(--note-ink);
+  border-radius: 3px;
+  box-shadow: var(--shadow-note);
+  transform: rotate(var(--rot));
+  font-family: var(--font-hand); font-size: var(--fs-note); line-height: 1.38;
+  cursor: pointer; touch-action: pan-y;
+}
+.card[data-color="yellow"] { --note-bg: var(--note-yellow); }
+.card[data-color="pink"]   { --note-bg: var(--note-pink); }
+.card[data-color="blue"]   { --note-bg: var(--note-blue); }
+.card[data-color="green"]  { --note-bg: var(--note-green); }
+.card.is-pinned::before { content: ""; position: absolute; top: -7px; left: 50%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--thread); box-shadow: 0 2px 3px var(--thread-shadow); }   /* 핀 = 붉은 실의 매듭(실과 같은 한 오브제) */
+.card.is-pinned { box-shadow: var(--shadow-lift); }
+.card:hover { transform: rotate(var(--rot)) translateY(-2px); }
+.card.is-selected, .card:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; transform: rotate(0deg) translateY(-3px); z-index: 4; box-shadow: var(--shadow-lift); }
+.card.is-connect-from { outline: 2px dashed var(--focus); outline-offset: 4px; z-index: 4; }
+.card.is-moving { outline: 2px solid var(--ink); outline-offset: 4px; z-index: 5; }
+.card.is-dragging { z-index: 40; opacity: .92; transition: none !important; box-shadow: var(--shadow-sheet); cursor: grabbing; }
+.card.is-match { outline: 2px solid var(--focus); outline-offset: 3px; }
+.card:not(.is-attached) { opacity: 0; visibility: hidden; transform: translateY(-22px) rotate(calc(var(--rot) + 6deg)) scale(1.1); }
+.card.is-attached { animation: stick .52s cubic-bezier(.22, .9, .3, 1.15) backwards; }
+@keyframes stick {
+  0%   { opacity: 0; transform: translateY(-26px) rotate(calc(var(--rot) + 7deg)) scale(1.12); box-shadow: 0 30px 30px -12px rgba(0,0,0,.35); }
+  55%  { opacity: 1; }
+  100% { transform: translateY(0) rotate(var(--rot)) scale(1); }
+}
+.card.is-leaving { opacity: 0; transform: translateY(14px) rotate(calc(var(--rot) - 3deg)) scale(.94); transition: opacity .18s, transform .18s; }
+.card.is-gone { display: none; }
+
+.badges { display: flex; align-items: center; gap: 6px; margin-bottom: var(--s2); font-family: var(--font-body); font-size: var(--fs-note-meta); }
+.badge { padding: 0 8px; border-radius: 999px; background: var(--badge-bg); color: var(--badge-ink); font-weight: 600; line-height: 24px; }
+.badge.pin { background: var(--badge-pin-bg); color: var(--badge-pin-ink); }
+.badge.new { animation: pulse-bg 1.4s 3; }
+.badges { flex-wrap: wrap; }
+.card-pin { margin-left: auto; min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1.5px solid var(--note-ink); background: rgba(255,255,255,.55); color: var(--note-ink); font: 700 16px/1 var(--font-body); cursor: pointer; visibility: hidden; }
+.card-pin[aria-pressed="true"] { background: var(--badge-pin-bg); color: var(--badge-pin-ink); border-color: var(--badge-pin-bg); }
+.card:hover .card-pin, .card:focus-within .card-pin, .card.is-selected .card-pin, .board-frame.list-mode .card-pin { visibility: visible; }
+.card-pin:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@keyframes pulse-bg { 50% { opacity: .6; } }
+.c-img { display: block; width: 100%; height: 76px; object-fit: cover; margin-bottom: var(--s2); border-radius: 2px; border: var(--bw) solid rgba(43, 38, 33, .15); }
+.c-head { font: 700 var(--fs-note-head)/1.25 var(--font-hand); margin-bottom: var(--s1); overflow-wrap: anywhere; }
+.c-sum, .c-body { color: var(--note-ink); overflow-wrap: anywhere; }
+.c-sum { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.c-body { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.c-src { margin-top: var(--s2); font: 500 var(--fs-note-meta)/1.3 var(--font-body); color: var(--note-ink-2); }
+.c-src a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.c-why { margin-top: var(--s1); color: var(--note-accent-ink); font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.c-links { display: none; margin-top: var(--s2); font: 500 var(--fs-note-meta)/1.35 var(--font-body); color: var(--note-ink-2); }
+.c-links::before { content: "붉은 실: "; font-weight: 700; color: var(--note-accent-ink); }
+
+/* 목록 보기(좁은 폭 기본) */
+.board-frame.list-mode .canvas { width: auto; height: auto !important; padding: var(--s5) var(--s4); display: grid; gap: var(--s5); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.board-frame.list-mode .threads { display: none; }
+.board-frame.list-mode .card { position: relative; left: auto; top: auto; width: auto; transform: none; }
+.board-frame.list-mode .card.is-selected, .board-frame.list-mode .card:focus-visible { transform: translateY(-2px); }
+.board-frame.list-mode .card:not(.is-attached) { transform: translateY(-14px); }
+.board-frame.list-mode .c-links.has { display: block; }
+@container shell (max-width: 560px) { .board-frame.list-mode .canvas { grid-template-columns: 1fr; } }
+
+/* 빈 판 안내 */
+.empty-board { position: relative; z-index: 2; max-width: 480px; margin: 56px auto 0; padding: var(--s5); border-radius: var(--r2); border: var(--bw) solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow-face); }
+.empty-board h2 { margin: 0 0 var(--s2); font-size: 20px; }
+.empty-board p { margin: 0 0 var(--s3); color: var(--ink-2); }
+.empty-board .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.board-frame.list-mode .empty-board { grid-column: 1 / -1; margin: var(--s4) 0; }
+
+/* 위치 표시 미니맵 */
+.mm-wrap { position: sticky; bottom: 12px; height: 0; z-index: 25; display: flex; justify-content: flex-end; padding-right: 12px; pointer-events: none; }
+.mini { position: relative; transform: translateY(calc(-100% - 0px)); pointer-events: auto; padding: 0; border: var(--bw) solid var(--line-strong); border-radius: var(--r2); background: var(--surface); box-shadow: var(--shadow-sheet); cursor: pointer; overflow: hidden; }
+.mini i { position: absolute; border-radius: 1px; background: var(--c, #ccc); opacity: .95; }
+.mini i.p { outline: 1px solid var(--accent); }
+.mini i.s { outline: 2px solid var(--ink); z-index: 2; }
+.mini i.n { animation: pulse-bg 1s 4; }
+.mini .view { position: absolute; border: 1.5px solid var(--accent); background: var(--accent-soft); pointer-events: none; z-index: 3; }
+.mini-cap { position: absolute; left: 4px; bottom: 2px; font-size: 11px; color: var(--ink-2); pointer-events: none; z-index: 4; }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin-top: var(--s3); color: var(--ink-2); font-size: var(--fs-small); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+@container shell (max-width: 560px) { .legend { display: none; } }
+
+/* 다이얼로그 */
+dialog { padding: 0; border: var(--bw) solid var(--line-strong); border-radius: var(--r3); background: var(--surface); color: var(--ink); width: min(600px, calc(100vw - 32px)); box-shadow: var(--shadow-sheet); }
+dialog::backdrop { background: var(--scrim); }
+.dlg { padding: var(--s5); display: grid; gap: var(--s3); max-height: 84vh; overflow: auto; }
+.dlg h2 { font: 700 22px/1.3 var(--font-body); }
+.dlg .kv { color: var(--ink-2); font-size: var(--fs-small); }
+.dlg .full { white-space: pre-wrap; line-height: 1.7; }
+.dlg .foot { display: flex; justify-content: flex-end; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s2); }
+.dlg .field { display: grid; gap: var(--s1); }
+.dlg .field label { font-weight: 600; font-size: var(--fs-small); color: var(--ink-2); }
+.dlg input, .dlg textarea { width: 100%; padding: var(--s2) var(--s3); border-radius: var(--r2); border: var(--bw) solid var(--line-strong); background: var(--paper); line-height: 1.6; }
+.dlg textarea { min-height: 110px; resize: vertical; }
+.arch { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.arch li { display: grid; grid-template-columns: 1fr auto; gap: var(--s2) var(--s3); align-items: center; padding: var(--s3); border-radius: var(--r2); background: var(--sunken); }
+.arch .a-title { font-weight: 700; }
+.arch .a-src { color: var(--ink-2); font-size: var(--fs-small); }
+.arch .a-note { display: flex; gap: var(--s1); flex-wrap: wrap; margin-top: var(--s1); }
+.arch .a-btns { display: flex; gap: var(--s1); flex-wrap: wrap; justify-content: flex-end; }
+.arch .empty-li { display: block; text-align: center; color: var(--ink-2); }
+.find-list { list-style: none; margin: 0; padding: 0; display: grid; max-height: 46vh; overflow: auto; border: var(--bw) solid var(--line); border-radius: var(--r2); }
+.find-list li { border-bottom: var(--bw) solid var(--rule); }
+.find-list li:last-child { border-bottom: 0; }
+.find-list button { width: 100%; display: grid; grid-template-columns: 14px 1fr auto; gap: var(--s3); align-items: center; padding: var(--s2) var(--s3); border: 0; background: transparent; text-align: left; min-height: 48px; }
+.find-list button:hover, .find-list button:focus-visible { background: var(--sunken); }
+.find-list .dot { width: 14px; height: 14px; border-radius: 3px; background: var(--c); border: var(--bw) solid var(--line-strong); }
+.find-list .ft { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-list .fp { color: var(--ink-2); font-size: var(--fs-small); white-space: nowrap; }
+.find-input { min-height: 42px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card.is-attached, .threads path.draw, .research .dot, .badge.new, .mini i.n { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .canvas.animate-pos .card { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="shell" id="shell" data-now="board">
+
+  <!-- 시안 보기 도구: 제품 UI가 아님 -->
+  <details class="devbar" id="devbar" open>
+    <summary>시안 보기 도구</summary>
+    <div class="dev-body">
+      <span class="seg" role="group" aria-label="화면 전환">
+        <button class="btn" data-go="empty" type="button">최초 진입(빈 목록)</button>
+        <button class="btn" data-go="list" type="button">아이디어 목록</button>
+        <button class="btn" data-go="board" type="button">코르크판</button>
+      </span>
+      <label>AI 상태
+        <select id="aiState">
+          <option value="ok">정상</option>
+          <option value="missing">미설치</option>
+          <option value="login">로그인 안 됨</option>
+          <option value="fail">AI 실패</option>
+          <option value="net">네트워크 오류</option>
+        </select>
+      </label>
+      <label>판 상태
+        <select id="boardPreset">
+          <option value="normal">보통 (메시지 있음 · 카드 9장)</option>
+          <option value="nomsg">메시지 없음 (경험 시작 직후 · 빈 판)</option>
+          <option value="empty">빈 판 (메시지만 있음)</option>
+          <option value="noresearch">조사 불가 (Claude Code 미설치)</option>
+        </select>
+      </label>
+      <label>카드 수
+        <select id="cardScale"><option value="9">9장</option><option value="50">50장</option></select>
+      </label>
+      <label><input type="checkbox" id="preview480"> 480px 폭으로 보기</label>
+      <button class="btn sm" id="replay" type="button">카드 붙는 동작 다시 보기</button>
+      <span class="sep"></span>
+      <span class="seg" role="group" aria-label="테마">
+        <button class="btn" id="themeLight" type="button" aria-pressed="false">라이트</button>
+        <button class="btn" id="themeDark" type="button" aria-pressed="false">다크</button>
+      </span>
+    </div>
+  </details>
+
+  <!-- 공통 헤더 (규약 §2) -->
+  <header class="apphead">
+    <a class="btn ghost back" data-view="list" data-href="../kraken/index.html?view=list" href="index.html?view=list">← 아이디어 목록</a>
+    <span class="brand">콘텐츠 스튜디오</span>
+    <span class="idea-title" title="퇴근길의 작은 친절">퇴근길의 작은 친절</span>
+  </header>
+
+  <!-- 목록 / 최초 진입(빈 목록): 같은 화면, 같은 「새 아이디어」 진입점 -->
+  <section data-screen="list" hidden aria-labelledby="listTitle">
+    <div class="errbox-slot"></div>
+    <div class="list-wrap">
+      <div class="list-head">
+        <div class="lh-title">
+          <div class="mini-art" aria-hidden="true"><i></i></div>
+          <div>
+            <h1 id="listTitle">아이디어</h1>
+            <p id="listSub">이어서 쓸 아이디어를 고르거나 새로 시작해요.</p>
+          </div>
+        </div>
+        <button class="btn primary" id="newIdea" type="button" aria-expanded="false" aria-controls="newPanel">새 아이디어</button>
+      </div>
+      <div class="new-panel" id="newPanel" hidden>
+        <div class="start-options">
+          <button class="start-opt primary" type="button" data-start="message"><strong>메시지에서 시작</strong><span>하고 싶은 말이 이미 한 문장으로 있어요. 질문이어도 괜찮아요.</span></button>
+          <button class="start-opt" type="button" data-start="experience"><strong>경험·글감에서 시작</strong><span>겪은 일이나 기사 링크부터 적어 둘게요. 메시지는 나중에 찾아도 돼요.</span></button>
+        </div>
+        <form class="start-form" id="startForm" hidden></form>
+      </div>
+      <div class="face" id="ideasFace">
+        <ul class="ideas" id="ideas"></ul>
+        <div class="empty-block" id="emptyBlock" hidden>
+          <div class="mini-art" aria-hidden="true"><i></i></div>
+          <h2>아직 아이디어가 없어요</h2>
+          <p>위의 「새 아이디어」로 하고 싶은 말 한 줄, 또는 겪은 일 하나를 적어 시작해요.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 코르크판 -->
+  <section data-screen="board" aria-label="코르크판">
+    <div class="top">
+      <div class="message" id="msgBlock">
+        <div class="label">
+          <span>현재 메시지</span><span class="chip cand" id="msgChip">후보</span>
+          <span class="sp"></span>
+          <button class="btn sm" id="msgEdit" type="button">수정</button>
+        </div>
+        <h1 class="text" id="msgText"></h1>
+        <form class="msg-form" id="msgForm" hidden>
+          <label for="msgInput" id="msgLabel">아직 메시지가 없어요. 한 문장으로 적어 보세요</label>
+          <div class="row"><input id="msgInput" type="text" autocomplete="off"><button class="btn primary" type="submit">저장</button><button class="btn ghost" type="button" id="msgCancel">취소</button></div>
+        </form>
+      </div>
+
+      <div class="steps-wrap">
+        <ol class="steps" aria-label="단계 이동">
+          <li><a class="done" data-href="../nautilus/index.html?step=story" href="../nautilus/index.html?step=story" aria-label="1 이야기"><span class="n">1</span><span class="nm">이야기</span></a></li>
+          <li><a aria-current="step" data-view="board" data-href="../kraken/index.html?view=board" href="index.html?view=board" aria-label="2 코르크판, 현재 단계"><span class="n">2</span><span class="nm">코르크판</span></a></li>
+          <li><a data-href="../nautilus/index.html?step=hook" href="../nautilus/index.html?step=hook" aria-label="3 후킹"><span class="n">3</span><span class="nm">후킹</span></a></li>
+          <li><a data-href="../leviathan/index.html?step=outline" href="../leviathan/index.html?step=outline" aria-label="4 얼개"><span class="n">4</span><span class="nm">얼개</span></a></li>
+          <li><a data-href="../leviathan/index.html?step=draft" href="../leviathan/index.html?step=draft" aria-label="5 초안"><span class="n">5</span><span class="nm">초안</span></a></li>
+        </ol>
+        <div class="steps-acts">
+          <button class="btn sm jump" type="button" data-jump="#boardFrame">↓ 카드 보기</button>
+          <a class="btn" data-href="../nautilus/index.html?step=hook" href="../nautilus/index.html?step=hook">다음: 후킹 설계 →</a>
+        </div>
+      </div>
+
+      <div id="aiSlot"></div>
+    </div>
+
+    <div class="tools">
+      <span class="seg" role="group" aria-label="보기 방식">
+        <button class="btn" id="viewBoard" type="button" aria-pressed="true">판</button>
+        <button class="btn" id="viewList" type="button" aria-pressed="false">목록</button>
+      </span>
+      <button class="btn" id="addMemo" type="button">+ 메모 붙이기</button>
+      <button class="btn" id="openFind" type="button" aria-haspopup="dialog">카드 찾기 <kbd>/</kbd></button>
+      <span class="sp"></span>
+      <span class="counts" id="counts"></span>
+      <button class="btn" id="openArchive" type="button" aria-haspopup="dialog">버린 카드 <span id="archCount">0</span></button>
+    </div>
+
+    <div class="selbar empty-sel" id="selbar" role="toolbar" aria-label="선택한 카드 동작"></div>
+    <div class="modebar" id="modebar" hidden></div>
+
+    <div class="board-frame" id="boardFrame">
+      <div class="board-scroll" id="boardScroll">
+        <div class="canvas" id="canvas" role="group" aria-label="카드 판">
+          <svg class="threads" id="threads" aria-hidden="true"></svg>
+          <div class="empty-board" id="emptyBoard" hidden></div>
+        </div>
+      </div>
+      <div class="mm-wrap" id="mmWrap" hidden><div class="mini" id="mini" role="img" aria-label="판 전체 지도: 점은 카드, 붉은 사각형은 지금 보이는 곳. 눌러서 이동"></div></div>
+    </div>
+
+    <p class="legend" aria-label="키보드 조작">
+      <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 카드 선택</span>
+      <span><kbd>Enter</kbd> 열기</span>
+      <span><kbd>E</kbd> 고치기</span>
+      <span><kbd>P</kbd> 고정</span>
+      <span><kbd>L</kbd> 붉은 실</span>
+      <span><kbd>M</kbd> 자리 옮기기</span>
+      <span><kbd>X</kbd> 버리기</span>
+      <span><kbd>/</kbd> 카드 찾기</span>
+      <span><kbd>B</kbd> 보관함</span>
+    </p>
+  </section>
+</div>
+
+<div class="visually-hidden" id="live" role="status" aria-live="polite"></div>
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button type="button" id="toastAct" hidden></button></div>
+
+<!-- 카드 열기 / 고치기 -->
+<dialog id="dlgCard" aria-labelledby="dcTitle">
+  <div class="dlg" id="dcView">
+    <div class="kv" id="dcType"></div>
+    <h2 id="dcTitle"></h2>
+    <p class="full" id="dcFull"></p>
+    <p class="kv" id="dcSrc"></p>
+    <p class="kv" id="dcWhy"></p>
+    <p class="kv" id="dcLinks"></p>
+    <div class="foot"><button class="btn" type="button" id="dcEdit">고치기 <kbd>E</kbd></button><button class="btn primary" type="button" data-close>닫기</button></div>
+  </div>
+  <form class="dlg" id="dcForm" hidden>
+    <h2>카드 고치기</h2>
+    <div class="field"><label for="efHead">헤드라인</label><input id="efHead" type="text"></div>
+    <div class="field"><label for="efBody" id="efBodyL">요약</label><textarea id="efBody"></textarea></div>
+    <div class="field" id="efSrcWrap"><label for="efSrcN">출처 이름 (선택)</label><input id="efSrcN" type="text"></div>
+    <div class="field" id="efUrlWrap"><label for="efSrcU">출처 링크 (선택, http/https)</label><input id="efSrcU" type="url" placeholder="https://"></div>
+    <div class="field"><label for="efWhy">메시지와 연결되는 이유 한 줄</label><input id="efWhy" type="text"></div>
+    <p class="kv" id="efNote"></p>
+    <div class="foot"><button class="btn ghost" type="button" id="efCancel">취소</button><button class="btn primary" type="submit">저장</button></div>
+  </form>
+</dialog>
+
+<!-- 보관함 -->
+<dialog id="dlgArchive" aria-labelledby="daTitle">
+  <div class="dlg">
+    <h2 id="daTitle">버린 카드</h2>
+    <p class="kv">버린 카드는 여기에 보관돼요. 복구하면 <b>원래 자리와 버리기 전 고정 상태</b>로 돌아가고, 숨겨 둔 붉은 실도 양끝 카드가 판에 있으면 다시 보여요. 완전히 삭제하면 카드와 그 실이 사라져요.</p>
+    <ul class="arch" id="archList"></ul>
+    <div class="foot"><button class="btn primary" type="button" data-close>닫기</button></div>
+  </div>
+</dialog>
+
+<!-- 메모 붙이기 -->
+<dialog id="dlgMemo" aria-labelledby="dmTitle">
+  <form class="dlg" method="dialog" id="memoForm">
+    <h2 id="dmTitle">메모 붙이기</h2>
+    <label class="kv" for="memoText">떠오른 생각을 그대로 적어 주세요. 출처나 이유는 안 적어도 돼요.</label>
+    <textarea id="memoText" required></textarea>
+    <div class="foot"><button class="btn" type="button" data-close>취소</button><button class="btn primary" type="submit">붙이기</button></div>
+  </form>
+</dialog>
+
+<!-- 카드 찾기 / 이을 카드 고르기 -->
+<dialog id="dlgFind" aria-labelledby="dfTitle">
+  <div class="dlg">
+    <h2 id="dfTitle">카드 찾기</h2>
+    <p class="kv" id="dfSub">제목·요약·내용으로 찾고, 고르면 그 카드로 이동해요.</p>
+    <input class="find-input dlg-input" id="findInput" type="search" placeholder="예: 버스, 인사, 친절 피로" autocomplete="off" style="width:100%;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper)">
+    <p class="kv" id="findCount" aria-live="polite"></p>
+    <ul class="find-list" id="findList"></ul>
+    <div class="foot"><button class="btn primary" type="button" data-close>닫기</button></div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const shell = $('#shell'), canvas = $('#canvas'), threadsSvg = $('#threads');
+  const frame = $('#boardFrame');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const Q = new URLSearchParams(location.search);
+
+  /* ───────── 알림 ───────── */
+  let toastTimer;
+  function say(msg, act) {
+    $('#live').textContent = ''; setTimeout(() => $('#live').textContent = msg, 20);
+    const t = $('#toast'), b = $('#toastAct');
+    $('#toastMsg').textContent = msg; b.hidden = !act;
+    if (act) { b.textContent = act.label; b.onclick = () => { act.fn(); t.classList.remove('show'); }; }
+    t.classList.add('show'); clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), act ? 6000 : 2800);
+  }
+
+  /* ───────── 테마·폭·링크 (규약 §1: 이동할 때 theme, w480 유지) ───────── */
+  const cur = { theme: document.documentElement.getAttribute('data-theme'), w480: Q.get('w480') === '1' };
+  function carry(base) {
+    const sep = base.includes('?') ? '&' : '?';
+    return base + sep + 'theme=' + cur.theme + (cur.w480 ? '&w480=1' : '');
+  }
+  function syncLinks() {
+    $$('a[data-href]').forEach(a => {
+      const base = a.dataset.href;
+      if (a.dataset.view) a.href = carry('index.html?view=' + a.dataset.view);   // 같은 화면 안 이동은 파일 이름만
+      else a.href = carry(base);
+    });
+    try { const u = new URL(location.href); u.searchParams.set('view', state.now); u.searchParams.set('theme', cur.theme); cur.w480 ? u.searchParams.set('w480', '1') : u.searchParams.delete('w480'); history.replaceState(null, '', u); } catch (e) {}
+  }
+  function setTheme(t) {
+    cur.theme = t; document.documentElement.setAttribute('data-theme', t);
+    $('#themeLight').setAttribute('aria-pressed', t === 'light'); $('#themeDark').setAttribute('aria-pressed', t === 'dark');
+    try { localStorage.setItem('cs-theme', t); } catch (e) {}
+    syncLinks();
+  }
+  $('#themeLight').onclick = () => setTheme('light');
+  $('#themeDark').onclick = () => setTheme('dark');
+
+  /* ───────── 시안용 일러스트(이미지 주소 대역) ───────── */
+  const art = {
+    dusk: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 92' preserveAspectRatio='xMidYMid slice'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#F2B58A'/><stop offset='1' stop-color='#8E6A8F'/></linearGradient></defs><rect width='224' height='92' fill='url(#g)'/><circle cx='168' cy='30' r='14' fill='#FFE3B8'/><g fill='#3B3243'><rect x='0' y='46' width='34' height='46'/><rect x='38' y='30' width='26' height='62'/><rect x='68' y='52' width='38' height='40'/><rect x='110' y='36' width='30' height='56'/><rect x='146' y='56' width='34' height='36'/><rect x='184' y='40' width='40' height='52'/></g><g fill='#FFD97A'><rect x='44' y='38' width='4' height='5'/><rect x='52' y='50' width='4' height='5'/><rect x='118' y='46' width='4' height='5'/><rect x='126' y='60' width='4' height='5'/><rect x='194' y='52' width='4' height='5'/><rect x='10' y='58' width='4' height='5'/></g></svg>`,
+    bus: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 92' preserveAspectRatio='xMidYMid slice'><rect width='224' height='92' fill='#7FA8A3'/><rect y='68' width='224' height='24' fill='#5E8580'/><rect x='34' y='24' width='156' height='46' rx='8' fill='#F4EFE4'/><g fill='#7FA8A3'><rect x='46' y='32' width='28' height='18' rx='3'/><rect x='80' y='32' width='28' height='18' rx='3'/><rect x='114' y='32' width='28' height='18' rx='3'/><rect x='148' y='32' width='32' height='30' rx='3'/></g><rect x='34' y='58' width='156' height='5' fill='#B83A32'/><circle cx='70' cy='72' r='9' fill='#3B3A37'/><circle cx='150' cy='72' r='9' fill='#3B3A37'/></svg>`,
+    cup: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 92' preserveAspectRatio='xMidYMid slice'><rect width='224' height='92' fill='#E4D3B8'/><rect y='64' width='224' height='28' fill='#C9AE86'/><path d='M82 34h60l-6 34a8 8 0 0 1-8 6H96a8 8 0 0 1-8-6z' fill='#FFFDF9'/><path d='M142 40c14 0 14 18 0 18' fill='none' stroke='#FFFDF9' stroke-width='5'/><rect x='88' y='38' width='48' height='8' fill='#B83A32' opacity='.85'/><g fill='none' stroke='#fff' stroke-width='3' stroke-linecap='round' opacity='.8'><path d='M100 26c-6-6 6-8 0-14'/><path d='M116 26c-6-6 6-8 0-14'/></g></svg>`
+  };
+  const svgUri = s => 'data:image/svg+xml;utf8,' + encodeURIComponent(s);
+
+  /* ───────── 데이터 (시안용 예시 — 가상 내용) ───────── */
+  const MESSAGE0 = '퇴근길의 작은 친절이 하루를 바꾼다';
+  function baseCards() { return [
+    { id: 'c1', type: 'research', color: 'blue', rot: -1.2, pinned: true, img: 'dusk',
+      headline: '낯선 사람의 인사가 퇴근길 기분을 바꾼다',
+      summary: '지하철에서 낯선 이에게 먼저 인사를 건넨 사람들이 그날 저녁 더 긍정적이었다는 실험을 소개한다. 효과는 인사를 받는 쪽보다 건네는 쪽에서 더 크게 나타났다. 연구진은 “예상보다 훨씬 덜 어색했다”고 보고했다.',
+      source: ['예시 행동과학 리뷰', 'https://example.com/commute-greeting'], why: '친절은 건네는 사람의 하루도 바꿔요' },
+    { id: 'c2', type: 'research', color: 'green', rot: 1,
+      headline: '‘친절 피로’: 서비스직의 감정 노동',
+      summary: '하루 종일 친절을 요구받는 직군은 친절을 “꺼내 쓰는 자원”으로 느낀다. 받는 친절보다 주는 친절이 소모되는 조건을 정리한 글.',
+      source: ['예시 노동연구소', 'https://example.com/kindness-fatigue'], why: '반대편 시선 — 친절이 부담이 되는 조건', pinned: true },
+    { id: 'c3', type: 'memo', color: 'pink', rot: -.8, pinned: true,
+      headline: '버스 기사님의 한마디',
+      content: '야근을 마치고 마지막 버스를 탔다. 내릴 때 기사님이 “오늘도 수고했어요” 하셨다. 별말 아닌데 집까지 걸어가는 내내 그 말이 따라왔다. 누군가에게 나도 그렇게 말해 보고 싶어졌다.' },
+    { id: 'c4', type: 'research', color: 'yellow', rot: 1.4, img: 'bus',
+      headline: '퇴근 시간대 도시 소음과 스트레스',
+      summary: '출퇴근 혼잡 구간에서 사람들은 가장 방어적이 된다. 그래서 작은 말 한마디가 평소보다 크게 남는다는 해석을 뒷받침하는 자료.',
+      source: ['예시 도시환경 보고서', 'https://example.com/rush-hour'], why: '왜 하필 퇴근길인가에 대한 답' },
+    { id: 'c5', type: 'research', color: 'yellow', rot: 1,
+      headline: '작은 선행이 이어지는 ‘다음 사람에게’ 사례',
+      summary: '앞 손님이 계산해 둔 커피를 받은 사람이 뒤 손님에게 다시 건네는 연쇄가 이어진 사례. 연쇄가 끊긴 날의 이야기도 함께 다룬다.',
+      source: ['예시 뉴스룸', 'https://example.com/pay-it-forward'], why: '친절이 공통 경험이 되는 장면' },
+    { id: 'c6', type: 'memo', color: 'pink', rot: -1.2,
+      headline: '내가 던질 질문',
+      content: '왜 하필 퇴근길일까? 하루 중 방어가 가장 풀린 때라서 그런가, 아니면 그냥 피곤해서 작은 말도 크게 들리는 걸까?' },
+    { id: 'c7', type: 'research', color: 'blue', rot: .7, img: 'cup',
+      headline: '“고맙습니다” 한마디가 남기는 것',
+      summary: '감사를 표현한 사람과 받은 사람 모두에게서 관계 만족도가 올랐다는 연구 정리. 짧은 인사도 효과가 있었다.',
+      source: ['예시 심리학 저널', 'https://example.com/thanks'], why: '짧은 말이 오래 남는 이유' },
+    { id: 'c8', type: 'research', color: 'green', rot: -.9,
+      headline: '카페의 ‘다음 손님 커피’ 선결제 문화',
+      summary: '동네 카페에서 시작된 선결제 메뉴가 어떻게 퍼졌는지, 주인들이 느낀 변화는 무엇이었는지를 인터뷰로 엮은 기사.',
+      source: ['예시 지역신문', 'https://example.com/next-coffee'], why: '독자가 바로 떠올릴 수 있는 공통 경험' },
+    { id: 'c9', type: 'memo', color: 'pink', rot: .8,
+      headline: '반례 찾기',
+      content: '친절이 오히려 부담이 된 순간은 언제였지? 빚진 기분이 들었던 때. 이 부분도 글에 한 줄은 넣어야 정직하다.' }
+  ]; }
+  function genCards() {
+    const S = ['지하철', '버스', '편의점', '카페', '엘리베이터', '아파트 단지', '병원 대기실', '야간 택시', '도서관', '회사 탕비실'];
+    const A = ['인사 한마디의 효과', '친절이 번지는 순간', '감사 표현이 남기는 것', '무심한 태도가 남기는 상처'];
+    const colors = ['yellow', 'blue', 'green'], out = []; let n = 0;
+    S.forEach(s => A.forEach(a => {
+      n++; const memo = n % 7 === 0;
+      out.push(memo
+        ? { id: 'g' + n, type: 'memo', color: 'pink', rot: (n % 5 - 2) * .5, headline: `${s}에서 있었던 일`, content: `${s}에서 비슷한 장면을 본 적이 있다. 그때는 그냥 지나쳤는데 지금 보니 ${a}와 닿아 있다.` }
+        : { id: 'g' + n, type: 'research', color: colors[n % 3], rot: (n % 5 - 2) * .5, headline: `${s}의 ${a}`,
+            summary: `${s}에서 ${a}를 다룬 사례를 모은 글. 짧은 말 한마디가 이후의 기분과 행동을 어떻게 바꾸는지 보여 준다.`,
+            source: [`예시 자료 ${n}`, `https://example.com/g${n}`], why: '친절이 공통 경험이 되는 장면' });
+    }));
+    out.push({ id: 'g41', type: 'memo', color: 'pink', rot: .5, headline: '마지막에 덧붙일 말', content: '글의 끝은 “다음에는 내가 먼저”로 맺고 싶다.' });
+    return out;
+  }
+  const BASE_LINKS = [['c3', 'c1'], ['c1', 'c7'], ['c5', 'c8'], ['c2', 'c4'], ['c6', 'c3'], ['d1', 'c2'], ['d2', 'c5']];
+  const GEN_LINKS = [['g3', 'g31'], ['c1', 'g38'], ['g12', 'g27'], ['c5', 'g40'], ['g20', 'g8'], ['g33', 'c9']];
+  const QUEUE0 = () => [
+    { id: 'q1', type: 'research', color: 'blue', rot: -1, img: 'bus', headline: '이웃에게 먼저 인사하는 캠페인의 결과',
+      summary: '아파트 단지에서 한 달간 엘리베이터 인사를 권한 뒤 주민 간 갈등 민원이 줄었다는 사례. 참여자 후기가 함께 실려 있다.',
+      source: ['예시 지자체 소식', 'https://example.com/hello-neighbors'], why: '낯선 사람과의 인사가 일상으로 번지는 예' },
+    { id: 'q2', type: 'research', color: 'yellow', rot: 1.3, headline: '점원에게 건네는 감사의 효과',
+      summary: '계산대에서 눈을 맞추고 인사한 손님의 경험과 점원의 하루 만족도를 비교한 현장 조사 결과.',
+      source: ['예시 소비자 연구', 'https://example.com/cashier-thanks'], why: '받는 쪽의 하루도 달라진다는 증거' },
+    { id: 'q3', type: 'research', color: 'green', rot: -1.7, headline: '무인 매장이 늘수록 줄어드는 말 한마디',
+      summary: '사람과 마주칠 일이 줄면서 일상의 짧은 인사도 함께 줄고 있다는 관찰. 친절의 “기회” 자체가 줄어드는 문제를 짚는다.',
+      source: ['예시 생활트렌드', 'https://example.com/unmanned'], why: '왜 지금 이 이야기가 필요한가' }
+  ];
+  const DISC0 = () => [
+    { id: 'd1', type: 'research', color: 'blue', x: 0, y: 0, rot: 0, headline: '해외 친절 지수 순위 기사', summary: '순위 위주 기사라 메시지와 결이 달라 버렸다.', source: ['예시 외신', 'https://example.com/ranking'], why: '', _idx: 3, _wasPinned: true },
+    { id: 'd2', type: 'memo', color: 'pink', x: 0, y: 0, rot: 0, headline: '', content: '친절한 사람이 되자는 다짐 — 너무 훈계 같다.', _idx: 6 }
+  ];
+  let cards = [], links = [], discarded = [], queue = [];
+  const state = { now: 'board', selected: null, connectFrom: null, moveId: null, moveFrom: -1, ai: 'ok', research: 'suggest', userView: false, message: MESSAGE0, msgStatus: '후보', lastCols: 2, scale: 9, findMode: 'jump' };
+  const byId = id => cards.find(c => c.id === id) || discarded.find(c => c.id === id);
+  const live = () => cards.filter(x => !x.gone);
+  const elOf = id => canvas.querySelector(`[data-id="${id}"]`);
+  const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  const title = c => c.headline || (c.content || '').split(/[.\n]/)[0];
+  const colorVar = c => `var(--note-${c.color})`;
+
+  /* ───────── 카드 DOM ───────── */
+  function cardInner(c) {
+    const body = c.type === 'research' ? `<p class="c-sum">${esc(c.summary)}</p>` : `<p class="c-body">${esc(c.content)}</p>`;
+    const src = c.source && c.source[0] ? `<p class="c-src">출처 · <a href="${esc(c.source[1] || '#')}" target="_blank" rel="noopener" tabindex="-1">${esc(c.source[0])} ↗</a></p>` : '';
+    const why = c.why ? `<p class="c-why">메시지와: ${esc(c.why)}</p>` : '';
+    return `<div class="badges"><span class="badge">${c.type === 'research' ? '조사' : '메모'}</span><span class="badge pin" data-b="pin">고정</span><span class="badge new" data-b="new">새로</span><button class="card-pin" type="button" tabindex="-1" data-act="cardpin"></button></div>
+      ${c.img ? `<img class="c-img" alt="" src="${svgUri(art[c.img])}">` : ''}
+      ${c.headline ? `<h3 class="c-head">${esc(c.headline)}</h3>` : ''}
+      ${body}${src}${why}<p class="c-links"></p>`;
+  }
+  function buildCard(c) {
+    const el = document.createElement('article');
+    el.className = 'card'; el.dataset.id = c.id; el.dataset.color = c.color;
+    el.style.setProperty('--x', c.x || 0); el.style.setProperty('--y', c.y || 0); el.style.setProperty('--rot', c.rot + 'deg');
+    el.tabIndex = -1; el.innerHTML = cardInner(c);
+    canvas.appendChild(el); paintCard(c); return el;
+  }
+  function refreshCard(c) {
+    const el = elOf(c.id); if (!el) return;
+    el.dataset.color = c.color; el.innerHTML = cardInner(c); paintCard(c); sizeCanvas(); drawThreads(); drawMini();
+  }
+  function paintCard(c) {
+    const el = elOf(c.id); if (!el) return;
+    el.classList.toggle('is-pinned', !!c.pinned);
+    el.querySelector('[data-b="pin"]').hidden = !c.pinned;
+    el.querySelector('[data-b="new"]').hidden = !c.fresh;
+    const pb = el.querySelector('.card-pin'); pb.textContent = c.pinned ? '풀기' : '고정'; pb.setAttribute('aria-pressed', !!c.pinned);
+    pb.setAttribute('aria-label', (c.pinned ? '고정 풀기: ' : '얼개 후보로 고정: ') + title(c));
+    const names = links.filter(l => l.includes(c.id) && byId(l[0]) && byId(l[1]) && cards.includes(byId(l[0])) && cards.includes(byId(l[1]))).map(l => title(byId(l[0] === c.id ? l[1] : l[0])));
+    const ln = el.querySelector('.c-links'); ln.textContent = names.join(' · '); ln.classList.toggle('has', names.length > 0);
+    el.setAttribute('aria-label', `${c.type === 'research' ? '조사 카드' : '메모 카드'}: ${title(c)}${c.pinned ? ', 고정됨' : ''}${names.length ? ', 붉은 실 ' + names.length + '개' : ''}`);
+  }
+
+  /* ───────── 붉은 실 ───────── */
+  const pathMap = new Map();
+  function ends(ea, eb) {
+    const ca = [ea.offsetLeft + ea.offsetWidth / 2, ea.offsetTop + ea.offsetHeight / 2], cb = [eb.offsetLeft + eb.offsetWidth / 2, eb.offsetTop + eb.offsetHeight / 2];
+    const dx = cb[0] - ca[0], dy = cb[1] - ca[1], horiz = Math.abs(dx) > Math.abs(dy) * .7;
+    const pt = (e, c, sx, sy) => horiz ? [c[0] + sx * e.offsetWidth / 2, e.offsetTop + 44] : [c[0], c[1] + sy * e.offsetHeight / 2];
+    const sx = Math.sign(dx) || 1, sy = Math.sign(dy) || 1;
+    return { a: pt(ea, ca, sx, sy), b: pt(eb, cb, -sx, -sy), horiz };
+  }
+  function drawThreads() {
+    const list = frame.classList.contains('list-mode') ? [] : links.filter(([a, b]) => {
+      const A = byId(a), B = byId(b), ea = elOf(a), eb = elOf(b);
+      return A && B && cards.includes(A) && cards.includes(B) && ea?.classList.contains('is-attached') && eb?.classList.contains('is-attached');
+    });
+    const want = new Set();
+    list.forEach(([a, b]) => {
+      const key = [a, b].sort().join('|'); want.add(key);
+      const { a: [ax, ay], b: [bx, by], horiz } = ends(elOf(a), elOf(b));
+      const dist = Math.hypot(bx - ax, by - ay), sag = Math.min(110, 24 + dist * .16);
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      const d = horiz ? `M${ax} ${ay} Q${mx} ${my + sag} ${bx} ${by}` : `M${ax} ${ay} Q${mx + (ax < 200 ? sag : -sag)} ${my} ${bx} ${by}`;
+      let g = pathMap.get(key);
+      if (!g) {
+        g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        ['t-shadow', 't-line'].forEach(cls => { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('class', cls + (reduceMotion ? '' : ' draw')); p.setAttribute('pathLength', '1'); g.appendChild(p); });
+        threadsSvg.appendChild(g); pathMap.set(key, g);
+      }
+      $$('path', g).forEach(p => p.setAttribute('d', d));
+      if (!g.querySelector('.t-knot')) [0, 1].forEach(() => { const k = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); k.setAttribute('class', 't-knot'); k.setAttribute('r', '5'); g.appendChild(k); });
+      g.querySelectorAll('.t-knot').forEach((k, i) => { k.setAttribute('cx', i ? bx : ax); k.setAttribute('cy', i ? by : ay); });
+    });
+    [...pathMap].forEach(([k, g]) => { if (!want.has(k)) { g.remove(); pathMap.delete(k); } });
+  }
+
+  /* 폭에 맞춘 자동 배치: 열 수를 정하고 가장 낮은 열부터 채운다 (가로 잘림·스크롤 없음) */
+  function layout() {
+    const W = canvas.clientWidth, pad = 40, gap = 56;
+    if (W < 200) return;
+    const cols = Math.max(2, Math.floor((W - pad * 2 + gap) / (224 + gap)));
+    const w = Math.min(268, Math.floor((W - pad * 2 - gap * (cols - 1)) / cols));
+    state.lastCols = cols; state.colW = w; state.colGap = gap; state.colPad = pad;
+    canvas.style.setProperty('--card-w', w + 'px');
+    const hs = Array(cols).fill(pad + 10);
+    live().forEach((c, i) => {
+      const e = elOf(c.id); if (!e) return;
+      const k = hs.indexOf(Math.min(...hs));
+      c.x = Math.round(pad + k * (w + gap) + (i % 3 - 1) * 4); c.y = hs[k] + (i % 2) * 10; c.col = k;
+      e.style.setProperty('--x', c.x); e.style.setProperty('--y', c.y);
+      hs[k] += e.offsetHeight + gap - 6;
+    });
+  }
+  function sizeCanvas() {
+    if (frame.classList.contains('list-mode')) { canvas.style.height = ''; return; }
+    layout();
+    const bottom = Math.max(520, ...live().map(c => { const e = elOf(c.id); return c.y + (e ? e.offsetHeight : 280) + 70; }));
+    canvas.style.height = bottom + 'px';
+  }
+
+  /* ───────── 위치 표시 ───────── */
+  function posText(id) {
+    const l = live(), i = l.findIndex(c => c.id === id); if (i < 0) return '';
+    if (frame.classList.contains('list-mode')) return `목록 ${i + 1}번째`;
+    const c = l[i], same = l.filter(x => x.col === c.col && x.y < c.y).length;
+    return `${c.col + 1}열 · 위에서 ${same + 1}번째`;
+  }
+  function refreshMeta() {
+    const l = live(), n = links.filter(([a, b]) => l.includes(byId(a)) && l.includes(byId(b))).length;
+    const sel = state.selected && byId(state.selected) ? ` · 선택 ${live().findIndex(c => c.id === state.selected) + 1}번째` : '';
+    $('#counts').textContent = `카드 ${l.length}장 · 고정 ${l.filter(c => c.pinned).length} · 붉은 실 ${n}${sel}`;
+    $('#archCount').textContent = discarded.length;
+    $$('.card-pin', canvas).forEach(b => b.tabIndex = b.closest('.card').dataset.id === state.selected ? 0 : -1);
+    renderEmptyBoard(); renderSelbar();
+  }
+  function renderEmptyBoard() {
+    const eb = $('#emptyBoard'), none = !live().length, ai = state.ai === 'ok';
+    eb.hidden = !none; if (!none) return;
+    const hasMsg = !!state.message;
+    eb.innerHTML = hasMsg
+      ? `<h2>아직 붙은 카드가 없어요</h2><p>${ai ? '「조사하기」를 누르면 웹에서 찾은 사례가 포스트잇으로 하나씩 붙어요. ' : '조사는 지금 할 수 없지만 '}직접 쓴 메모도 붙일 수 있어요.</p><div class="acts">${ai ? '<button class="btn primary" type="button" id="ebGo">조사하기</button>' : ''}<button class="btn${ai ? '' : ' primary'}" type="button" id="ebMemo">+ 메모 붙이기</button></div>`
+      : `<h2>메시지가 없어도 판을 쓸 수 있어요</h2><p>경험이나 글감부터 시작했다면 메시지는 나중에 찾아도 돼요. 위에 한 문장을 적으면 조사를 시작할 수 있고, 지금은 메모 카드를 먼저 붙일 수 있어요.</p><div class="acts"><button class="btn primary" type="button" id="ebMsg">메시지 적기</button><button class="btn" type="button" id="ebMemo">+ 메모 붙이기</button></div>`;
+    $('#ebGo')?.addEventListener('click', startResearch);
+    $('#ebMemo')?.addEventListener('click', () => $('#addMemo').click());
+    $('#ebMsg')?.addEventListener('click', () => { $('#msgInput').scrollIntoView({ block: 'center' }); $('#msgInput').focus(); });
+  }
+  function renderSelbar() {
+    const bar = $('#selbar'), c = state.selected && live().find(x => x.id === state.selected);
+    bar.classList.toggle('empty-sel', !c);
+    if (!c && !live().length) { bar.innerHTML = `<span>아직 카드가 없어요. 「조사하기」나 「+ 메모 붙이기」로 첫 카드를 붙여요.</span>`; return; }
+    if (!c) { bar.innerHTML = `<span>카드를 고르면 여기에서 고정·붉은 실·자리 옮기기·고치기·버리기를 할 수 있어요. 카드가 많으면 「카드 찾기」를 쓰세요.</span>`; return; }
+    const idx = live().indexOf(c) + 1;
+    bar.innerHTML = `<div class="sel-title">${esc(title(c))}<small>${live().length}장 중 ${idx}번째 · ${posText(c.id)}${c.pinned ? ' · 고정됨' : ''}</small></div>
+      <div class="sel-acts">
+        <button class="btn sm" type="button" data-act="pin" aria-pressed="${!!c.pinned}">${c.pinned ? '고정 풀기' : '얼개 후보로 고정'} <kbd>P</kbd></button>
+        <button class="btn sm" type="button" data-act="link" aria-pressed="${state.connectFrom === c.id}">붉은 실 <kbd>L</kbd></button>
+        <button class="btn sm" type="button" data-act="move" aria-pressed="${state.moveId === c.id}">자리 옮기기 <kbd>M</kbd></button>
+        <button class="btn sm" type="button" data-act="edit">고치기 <kbd>E</kbd></button>
+        <button class="btn sm" type="button" data-act="discard">버리기 <kbd>X</kbd></button>
+        <button class="btn sm" type="button" data-act="open">열기 <kbd>↵</kbd></button>
+      </div>`;
+  }
+  $('#selbar').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b || !state.selected) return;
+    act(b.dataset.act, state.selected);
+  });
+  function paintAll() { cards.forEach(paintCard); refreshMeta(); drawThreads(); drawMini(); }
+
+  /* ───────── 미니맵 ───────── */
+  function drawMini() {
+    const wrap = $('#mmWrap'), mm = $('#mini');
+    const list = frame.classList.contains('list-mode'), l = live();
+    wrap.hidden = list || l.length < 13 || state.now !== 'board';
+    if (wrap.hidden) return;
+    const W = canvas.clientWidth, H = canvas.clientHeight, s = Math.min(150 / W, 240 / H);
+    mm.style.width = Math.round(W * s) + 'px'; mm.style.height = Math.round(H * s) + 'px'; mm._s = s;
+    mm.innerHTML = l.map(c => { const e = elOf(c.id); return `<i class="${c.pinned ? 'p ' : ''}${c.id === state.selected ? 's ' : ''}${c.fresh ? 'n' : ''}" style="--c:${colorVar(c)};left:${c.x * s}px;top:${c.y * s}px;width:${Math.max(3, (state.colW || 224) * s)}px;height:${Math.max(3, (e ? e.offsetHeight : 200) * s)}px"></i>`; }).join('') + '<div class="view"></div><span class="mini-cap">전체 지도</span>';
+    updateMiniView();
+  }
+  function updateMiniView() {
+    const mm = $('#mini'), v = mm.querySelector('.view'); if (!v || !mm._s) return;
+    const top = frame.getBoundingClientRect().top, H = canvas.clientHeight, s = mm._s;
+    const vt = Math.max(0, -top), vh = Math.max(10, Math.min(innerHeight, H - vt));
+    v.style.top = vt * s + 'px'; v.style.height = vh * s + 'px'; v.style.left = '0'; v.style.width = '100%';
+  }
+  $('#mini').addEventListener('click', e => {
+    const mm = $('#mini'), r = mm.getBoundingClientRect(), y = (e.clientY - r.top) / mm._s;
+    const fr = frame.getBoundingClientRect();
+    scrollTo({ top: scrollY + fr.top + y - innerHeight / 2, behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
+  let raf; addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(updateMiniView); }, { passive: true });
+
+  /* ───────── 붙이기 (하나씩) ───────── */
+  let attachTimers = [];
+  function attach(c, opts = {}) {
+    const el = elOf(c.id) || buildCard(c);
+    sizeCanvas(); el.classList.add('is-attached'); el.tabIndex = 0;
+    if (opts.fresh) { c.fresh = true; paintCard(c); setTimeout(() => { c.fresh = false; paintCard(c); drawMini(); }, 7000); }
+    requestAnimationFrame(() => { sizeCanvas(); drawThreads(); drawMini(); });
+    refreshMeta();
+  }
+  function playIntro() {
+    attachTimers.forEach(clearTimeout); attachTimers = [];
+    canvas.classList.remove('animate-pos');
+    canvas.querySelectorAll('.card').forEach(e => { e.classList.remove('is-attached'); e.tabIndex = -1; });
+    drawThreads();
+    const step = reduceMotion ? 0 : (cards.length > 20 ? 28 : 170);
+    cards.forEach((c, i) => attachTimers.push(setTimeout(() => { elOf(c.id) || buildCard(c); attach(c); }, reduceMotion ? 0 : 240 + i * step)));
+    attachTimers.push(setTimeout(() => canvas.classList.add('animate-pos'), 300 + cards.length * step + 600));
+  }
+  function resetBoard(n) {
+    state.scale = n; state.selected = null; cancelConnect(); cancelMove(true);
+    $$('.card', canvas).forEach(e => e.remove()); pathMap.forEach(g => g.remove()); pathMap.clear();
+    cards = n === 0 ? [] : baseCards(); links = n === 0 ? [] : BASE_LINKS.slice(); discarded = n === 0 ? [] : DISC0(); queue = QUEUE0();
+    if (n === 50) { cards.push(...genCards()); links.push(...GEN_LINKS); }
+    cards.forEach(buildCard); sizeCanvas(); refreshMeta(); drawMini();
+  }
+
+  /* ───────── 선택 ───────── */
+  function select(id, focus = true, scroll = true) {
+    state.selected = id;
+    $$('.card', canvas).forEach(e => { const on = e.dataset.id === id; e.classList.toggle('is-selected', on); on ? e.setAttribute('aria-current', 'true') : e.removeAttribute('aria-current'); });
+    const el = elOf(id);
+    if (el && focus) el.focus({ preventScroll: true });
+    if (el && scroll) el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+    refreshMeta(); drawMini();
+  }
+  function move(dir) {
+    const cur = elOf(state.selected) || document.activeElement.closest?.('.card');
+    const all = $$('.card.is-attached:not(.is-gone)', canvas);
+    if (!cur) { all[0] && select(all[0].dataset.id); return; }
+    const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let best = null, bs = Infinity;
+    all.forEach(e => {
+      if (e === cur) return;
+      const q = e.getBoundingClientRect(), dx = q.left + q.width / 2 - cx, dy = q.top + q.height / 2 - cy;
+      const main = { ArrowRight: dx, ArrowLeft: -dx, ArrowDown: dy, ArrowUp: -dy }[dir];
+      const cross = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dy) : Math.abs(dx);
+      if (main <= 12) return;
+      const s = main + cross * 2.2; if (s < bs) { bs = s; best = e; }
+    });
+    if (best) select(best.dataset.id);
+  }
+
+  /* ───────── 동작 ───────── */
+  function act(a, id) {
+    if (a === 'pin') togglePin(id);
+    if (a === 'link') state.connectFrom === id ? cancelConnect() : startConnect(id);
+    if (a === 'move') state.moveId === id ? cancelMove(false) : startMove(id);
+    if (a === 'edit') openCard(id, true);
+    if (a === 'discard') discard(id);
+    if (a === 'open') openCard(id, false);
+  }
+  function togglePin(id) {
+    const c = byId(id); c.pinned = !c.pinned; paintCard(c); refreshMeta(); drawMini();
+    say(c.pinned ? `‘${title(c)}’ 카드를 얼개 후보로 고정했어요.` : `‘${title(c)}’ 고정을 풀었어요.`);
+  }
+  function discard(id) {
+    const c = byId(id), el = elOf(id), all = $$('.card.is-attached:not(.is-gone)', canvas);
+    const idx = all.indexOf(el), next = all[idx + 1] || all[idx - 1];
+    c._wasPinned = !!c.pinned; c._idx = cards.indexOf(c); c.pinned = false;
+    if (state.connectFrom === id) cancelConnect();
+    el.classList.add('is-leaving');
+    setTimeout(() => { el.classList.add('is-gone'); el.classList.remove('is-leaving'); sizeCanvas(); drawThreads(); drawMini(); }, reduceMotion ? 0 : 190);
+    cards = cards.filter(x => x !== c); discarded.unshift(c);
+    state.selected = null; paintAll();
+    el.classList.add('is-gone');   // 레이아웃에서 즉시 제외
+    sizeCanvas(); drawThreads(); drawMini();
+    if (next) select(next.dataset.id, true, false); else $('#openArchive').focus();
+    say(`‘${title(c)}’ 카드를 버렸어요.`, { label: '되돌리기', fn: () => restore(id, true) });
+  }
+  function restore(id) {
+    const c = discarded.find(x => x.id === id); if (!c) return;
+    discarded = discarded.filter(x => x !== c);
+    c.pinned = !!c._wasPinned;
+    cards.splice(Math.min(c._idx ?? cards.length, cards.length), 0, c);
+    const el = elOf(c.id) || buildCard(c); el.classList.remove('is-gone');
+    attach(c, { fresh: true }); paintAll(); renderArchive();
+    say(`‘${title(c)}’ 카드를 원래 자리와 고정 상태로 되돌렸어요.`);
+  }
+  /* 붉은 실 */
+  function startConnect(id) {
+    cancelMove(true);
+    state.connectFrom = id;
+    $$('.card', canvas).forEach(e => e.classList.toggle('is-connect-from', e.dataset.id === id));
+    const mb = $('#modebar'); mb.hidden = false;
+    mb.innerHTML = `<span>‘${esc(title(byId(id)))}’에서 붉은 실을 잇는 중 — 이을 카드를 방향키로 고르고 <kbd>Enter</kbd>. 멀리 있는 카드는 「목록에서 고르기」(<kbd>/</kbd>)로 찾아요. 이미 이어진 카드를 고르면 실이 풀려요.</span><button class="btn sm" type="button" id="connFind">목록에서 고르기</button><button class="btn sm" type="button" id="cancelConnect">취소 <kbd>Esc</kbd></button>`;
+    $('#cancelConnect').onclick = () => { cancelConnect(); elOf(id)?.focus(); };
+    $('#connFind').onclick = () => openFind('connect');
+    say('붉은 실 잇기 시작. 이을 카드를 고르고 Enter를 누르세요.'); renderSelbar();
+  }
+  function cancelConnect() {
+    state.connectFrom = null; if (!state.moveId) $('#modebar').hidden = true;
+    $$('.card', canvas).forEach(e => e.classList.remove('is-connect-from')); renderSelbar();
+  }
+  function finishConnect(targetId) {
+    const from = state.connectFrom; if (!from) return;
+    if (from === targetId) { cancelConnect(); return; }
+    const i = links.findIndex(l => l.includes(from) && l.includes(targetId));
+    if (i >= 0) { links.splice(i, 1); say('붉은 실을 풀었어요.'); } else { links.push([from, targetId]); say(`붉은 실로 이었어요: ‘${title(byId(from))}’ ↔ ‘${title(byId(targetId))}’`); }
+    cancelConnect(); paintAll(); select(targetId, true, true);
+  }
+  /* 자리 옮기기: 판은 순서대로 칸에 맞춰 정렬되므로 “자리 = 순서 칸”. 키보드(M + 방향키), 끌어서 놓기 둘 다 */
+  function startMove(id) {
+    cancelConnect(); state.moveId = id; state.moveFrom = cards.findIndex(c => c.id === id);
+    elOf(id).classList.add('is-moving');
+    const mb = $('#modebar'); mb.hidden = false;
+    mb.innerHTML = `<span>‘${esc(title(byId(id)))}’ 자리 옮기는 중 — <kbd>←</kbd><kbd>→</kbd> 한 칸, <kbd>↑</kbd><kbd>↓</kbd> 한 줄, <kbd>Enter</kbd> 확정, <kbd>Esc</kbd> 취소</span><button class="btn sm primary" type="button" id="moveOk">확정</button><button class="btn sm" type="button" id="moveNo">취소</button>`;
+    $('#moveOk').onclick = () => cancelMove(false); $('#moveNo').onclick = () => cancelMove(true);
+    elOf(id).focus({ preventScroll: true }); say('자리 옮기기 시작. 방향키로 옮기고 Enter로 확정하세요.'); renderSelbar();
+  }
+  function moveBy(delta) {
+    const i = cards.findIndex(c => c.id === state.moveId), j = Math.max(0, Math.min(cards.length - 1, i + delta));
+    if (i === j) return;
+    const [c] = cards.splice(i, 1); cards.splice(j, 0, c);
+    canvas.classList.add('animate-pos'); sizeCanvas(); drawThreads(); drawMini(); refreshMeta();
+    elOf(c.id).scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+    say(`${posText(c.id)}으로 옮겼어요.`);
+  }
+  function cancelMove(revert) {
+    if (!state.moveId) return;
+    const id = state.moveId;
+    if (revert && state.moveFrom >= 0) { const i = cards.findIndex(c => c.id === id), [c] = cards.splice(i, 1); cards.splice(state.moveFrom, 0, c); sizeCanvas(); drawThreads(); drawMini(); }
+    elOf(id)?.classList.remove('is-moving'); state.moveId = null; state.moveFrom = -1;
+    if (!state.connectFrom) $('#modebar').hidden = true;
+    say(revert ? '자리 옮기기를 취소했어요.' : `자리를 저장했어요. ${posText(id)}`); renderSelbar(); refreshMeta(); elOf(id)?.focus({ preventScroll: true });
+  }
+  /* 끌어서 놓기 */
+  let drag = null;
+  canvas.addEventListener('pointerdown', e => {
+    const card = e.target.closest('.card'); if (!card || e.button !== 0 || e.target.closest('a, .card-pin')) return;
+    if (frame.classList.contains('list-mode')) return;
+    drag = { id: card.dataset.id, x0: e.clientX, y0: e.clientY, on: false, el: card };
+  });
+  addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+    if (!drag.on && Math.hypot(dx, dy) > 8) { drag.on = true; drag.el.classList.add('is-dragging'); drag.el.setPointerCapture?.(e.pointerId); }
+    if (drag.on) drag.el.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
+  });
+  addEventListener('pointerup', e => {
+    if (!drag) return; const d = drag; drag = null;
+    if (!d.on) return;
+    d.el.classList.remove('is-dragging'); d.el.style.transform = '';
+    d.el.style.pointerEvents = 'none'; const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('.card'); d.el.style.pointerEvents = '';
+    d.el._dragged = true; setTimeout(() => d.el._dragged = false, 0);
+    if (t && t !== d.el) {
+      const i = cards.findIndex(c => c.id === d.id), j = cards.findIndex(c => c.id === t.dataset.id), [c] = cards.splice(i, 1); cards.splice(j, 0, c);
+      canvas.classList.add('animate-pos'); sizeCanvas(); drawThreads(); drawMini(); select(c.id, true, false); say(`자리를 옮겼어요. ${posText(c.id)}`);
+    }
+  });
+
+  /* ───────── 카드 열기 / 고치기 ───────── */
+  const dlgC = $('#dlgCard');
+  let openId = null;
+  function openCard(id, edit) {
+    openId = id; const c = byId(id);
+    $('#dcType').textContent = (c.type === 'research' ? '조사 카드' : '메모 카드') + (c.pinned ? ' · 얼개 후보로 고정됨' : '');
+    $('#dcTitle').textContent = title(c);
+    $('#dcFull').textContent = c.type === 'research' ? c.summary : c.content;
+    const s = $('#dcSrc'); s.textContent = '';
+    if (c.source && c.source[0]) { s.append('출처 · '); const a = document.createElement('a'); a.href = c.source[1] || '#'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = c.source[0] + ' ↗'; a.style.color = 'var(--accent)'; s.append(a); }
+    $('#dcWhy').textContent = c.why ? '메시지와: ' + c.why : '';
+    const ln = links.filter(l => l.includes(id)).map(l => title(byId(l[0] === id ? l[1] : l[0])));
+    $('#dcLinks').textContent = ln.length ? '붉은 실로 이어진 카드: ' + ln.join(' · ') : '';
+    $('#dcView').hidden = false; $('#dcForm').hidden = true;
+    if (!dlgC.open) dlgC.showModal();
+    if (edit) showEdit();
+  }
+  function showEdit() {
+    const c = byId(openId), r = c.type === 'research';
+    $('#efHead').value = c.headline || ''; $('#efBodyL').textContent = r ? '요약 (화면에는 3줄까지 보여요)' : '내용';
+    $('#efBody').value = r ? c.summary : c.content; $('#efBody').required = true;
+    $('#efSrcN').value = c.source?.[0] || ''; $('#efSrcU').value = c.source?.[1] || ''; $('#efWhy').value = c.why || '';
+    $('#efSrcWrap').hidden = $('#efUrlWrap').hidden = r;
+    $('#efNote').textContent = r ? '조사 카드는 출처와 이미지를 고칠 수 없어요. 헤드라인·요약·연결 한 줄만 고칠 수 있어요.' : '메모 카드는 모든 칸을 고칠 수 있어요. 비워도 되는 칸은 비워 두세요.';
+    $('#dcView').hidden = true; $('#dcForm').hidden = false; $('#efHead').focus();
+  }
+  $('#dcEdit').onclick = showEdit;
+  $('#efCancel').onclick = () => openCard(openId, false);
+  $('#dcForm').addEventListener('submit', e => {
+    e.preventDefault(); const c = byId(openId), r = c.type === 'research';
+    if (r && !$('#efHead').value.trim()) { say('조사 카드는 헤드라인이 있어야 해요.'); return; }
+    c.headline = $('#efHead').value.trim(); c.why = $('#efWhy').value.trim();
+    if (r) c.summary = $('#efBody').value.trim(); else {
+      c.content = $('#efBody').value.trim(); const n = $('#efSrcN').value.trim(), u = $('#efSrcU').value.trim();
+      if (u && !/^https?:\/\//i.test(u)) { say('출처 링크는 http 또는 https로 시작해야 해요.'); return; }
+      c.source = n || u ? [n || u, u] : null;
+    }
+    if (cards.includes(c)) refreshCard(c);
+    dlgC.close(); say('카드를 고쳤어요.'); refreshMeta(); elOf(c.id)?.focus({ preventScroll: true });
+  });
+
+  /* 카드 이벤트(위임) */
+  canvas.addEventListener('click', e => {
+    const card = e.target.closest('.card'); if (!card || card._dragged) return;
+    if (e.target.closest('a')) return;
+    const id = card.dataset.id;
+    if (e.target.closest('.card-pin')) { if (state.connectFrom) { finishConnect(id); return; } togglePin(id); return; }
+    if (state.connectFrom) { finishConnect(id); return; }
+    select(id, true, false);
+  });
+  canvas.addEventListener('dblclick', e => { const c = e.target.closest('.card'); if (c) openCard(c.dataset.id, false); });
+  canvas.addEventListener('keydown', e => {
+    const card = e.target.closest('.card'); if (!card || e.target.closest('.card-pin')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const id = card.dataset.id, k = e.key;
+    if (state.moveId) {
+      e.preventDefault();
+      if (k === 'ArrowLeft') moveBy(-1); else if (k === 'ArrowRight') moveBy(1);
+      else if (k === 'ArrowUp') moveBy(-state.lastCols); else if (k === 'ArrowDown') moveBy(state.lastCols);
+      else if (k === 'Enter') cancelMove(false); else if (k === 'Escape') cancelMove(true);
+      return;
+    }
+    if (k.startsWith('Arrow')) { e.preventDefault(); move(k); }
+    else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (state.connectFrom) finishConnect(id); else if (k === 'Enter') openCard(id, false); else select(id, true, false); }
+    else if (k === 'p' || k === 'P') togglePin(id);
+    else if (k === 'x' || k === 'X' || k === 'Delete' || k === 'Backspace') { e.preventDefault(); discard(id); }
+    else if (k === 'l' || k === 'L') { state.connectFrom ? (state.connectFrom === id ? cancelConnect() : finishConnect(id)) : startConnect(id); }
+    else if (k === 'm' || k === 'M') startMove(id);
+    else if (k === 'e' || k === 'E') openCard(id, true);
+    else if (k === 'Escape') { if (state.connectFrom) cancelConnect(); }
+  });
+  canvas.addEventListener('focusin', e => { const c = e.target.closest('.card'); if (c && state.selected !== c.dataset.id) { state.selected = c.dataset.id; $$('.card', canvas).forEach(x => x.classList.toggle('is-selected', x === c)); refreshMeta(); drawMini(); } });
+  document.addEventListener('keydown', e => {
+    if (e.target.closest('input, textarea, select, dialog') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (state.now !== 'board') return;
+    if (e.key === 'b' || e.key === 'B') { e.preventDefault(); openArchive(); }
+    if (e.key === '/') { e.preventDefault(); openFind(state.connectFrom ? 'connect' : 'jump'); }
+    if (e.key === 'Escape') { if (state.connectFrom) cancelConnect(); if (state.moveId) cancelMove(true); }
+  });
+
+  /* ───────── 보관함 ───────── */
+  const dlgA = $('#dlgArchive');
+  const nLinks = id => links.filter(l => l.includes(id)).length;
+  function renderArchive() {
+    const ul = $('#archList'); ul.innerHTML = '';
+    if (!discarded.length) { ul.innerHTML = '<li class="empty-li">버린 카드가 없어요. 판에서 버린 카드가 여기에 보관돼요.</li>'; return; }
+    discarded.forEach(c => {
+      const li = document.createElement('li');
+      li.innerHTML = `<div><div class="a-title">${esc(title(c))}</div><div class="a-src">${c.type === 'research' ? '조사 카드' : '메모 카드'}${c.source ? ' · ' + esc(c.source[0]) : ''}</div>
+        <div class="a-note">${c._wasPinned ? '<span class="chip">버리기 전 고정이었어요</span>' : ''}${nLinks(c.id) ? `<span class="chip">붉은 실 ${nLinks(c.id)}개 숨김</span>` : ''}</div></div>
+        <div class="a-btns"><button class="btn sm" type="button" data-r="restore">복구</button><button class="btn sm" type="button" data-r="del">완전히 삭제</button></div>`;
+      li.querySelector('[data-r="restore"]').onclick = () => restore(c.id);
+      li.querySelector('[data-r="del"]').onclick = ev => {
+        const box = ev.target.parentElement;
+        box.innerHTML = `<span class="a-src" style="align-self:center">카드와 붉은 실이 사라져요.</span><button class="btn sm primary" type="button" data-r="yes">정말 삭제</button><button class="btn sm" type="button" data-r="no">취소</button>`;
+        box.querySelector('[data-r="yes"]').focus();
+        box.querySelector('[data-r="yes"]').onclick = () => { discarded = discarded.filter(x => x !== c); links = links.filter(l => !l.includes(c.id)); renderArchive(); refreshMeta(); say('카드를 완전히 삭제했어요.'); };
+        box.querySelector('[data-r="no"]').onclick = renderArchive;
+      };
+      ul.appendChild(li);
+    });
+  }
+  function openArchive() { renderArchive(); if (!dlgA.open) dlgA.showModal(); }
+  $('#openArchive').onclick = openArchive;
+  $$('dialog').forEach(d => { $$('[data-close]', d).forEach(b => b.onclick = () => d.close()); d.addEventListener('click', e => { if (e.target === d) d.close(); }); });
+
+  /* ───────── 카드 찾기 / 이을 카드 고르기 ───────── */
+  const dlgF = $('#dlgFind');
+  function openFind(mode) {
+    state.findMode = mode;
+    $('#dfTitle').textContent = mode === 'connect' ? '이을 카드 고르기' : '카드 찾기';
+    $('#dfSub').textContent = mode === 'connect' ? `‘${title(byId(state.connectFrom))}’와 붉은 실로 이을 카드를 골라요. 이미 이어진 카드를 고르면 실이 풀려요.` : '제목·요약·내용으로 찾고, 고르면 그 카드로 이동해요.';
+    $('#findInput').value = ''; renderFind(); if (!dlgF.open) dlgF.showModal(); $('#findInput').focus();
+  }
+  function renderFind() {
+    const q = $('#findInput').value.trim().toLowerCase();
+    const l = live().filter(c => c.id !== (state.findMode === 'connect' ? state.connectFrom : null) && (!q || (title(c) + (c.summary || '') + (c.content || '') + (c.why || '')).toLowerCase().includes(q)));
+    $('#findCount').textContent = q ? `${l.length}장이 맞아요` : `전체 ${l.length}장`;
+    $('#findList').innerHTML = l.map(c => `<li><button type="button" data-id="${c.id}"><span class="dot" style="--c:${colorVar(c)}"></span><span class="ft">${esc(title(c))}${c.pinned ? ' · 고정' : ''}</span><span class="fp">${posText(c.id)}</span></button></li>`).join('') || '<li style="padding:12px" class="kv">맞는 카드가 없어요. 다른 낱말로 찾아 보세요.</li>';
+  }
+  $('#findInput').addEventListener('input', renderFind);
+  $('#findInput').addEventListener('keydown', e => { if (e.key === 'Enter') { const b = $('#findList button'); if (b) { e.preventDefault(); b.click(); } } });
+  $('#findList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-id]'); if (!b) return; const id = b.dataset.id; dlgF.close();
+    if (state.findMode === 'connect') finishConnect(id); else { select(id, true, true); say(`‘${title(byId(id))}’ 카드로 이동했어요. ${posText(id)}`); }
+  });
+  $('#openFind').onclick = () => openFind('jump');
+
+  /* ───────── 메모 붙이기 ───────── */
+  $('#addMemo').onclick = () => { $('#memoText').value = ''; $('#dlgMemo').showModal(); $('#memoText').focus(); };
+  $('#memoForm').addEventListener('submit', () => {
+    const t = $('#memoText').value.trim(); if (!t) return;
+    const c = { id: 'm' + Date.now(), type: 'memo', color: 'pink', x: 0, y: 0, rot: (Math.random() * 2 - 1), headline: '', content: t };
+    cards.push(c); buildCard(c); attach(c, { fresh: true }); paintAll(); select(c.id); say('메모를 붙였어요. 판 맨 뒤에 붙었어요. 자리를 옮기려면 M을 누르세요.');
+  });
+
+  /* ───────── 메시지 (규약 §2) ───────── */
+  function renderMessage() {
+    const empty = !state.message;
+    $('#msgText').hidden = empty; $('#msgChip').hidden = empty; $('#msgEdit').hidden = empty;
+    $('#msgText').textContent = state.message;
+    $('#msgChip').textContent = state.msgStatus + (state.message.trim().endsWith('?') ? ' · 질문형' : '');
+    $('#msgForm').hidden = !empty;
+    if (empty) { $('#msgLabel').textContent = '아직 메시지가 없어요. 한 문장으로 적어 보세요'; $('#msgInput').value = ''; }
+    renderAI(); renderEmptyBoard();
+  }
+  $('#msgEdit').onclick = () => {
+    $('#msgText').hidden = true; $('#msgEdit').hidden = true; $('#msgForm').hidden = false;
+    $('#msgLabel').textContent = '메시지 수정'; $('#msgInput').value = state.message; $('#msgInput').focus(); $('#msgInput').select();
+  };
+  $('#msgCancel').onclick = () => { renderMessage(); $('#msgEdit').focus(); };
+  $('#msgForm').addEventListener('submit', e => {
+    e.preventDefault(); const v = $('#msgInput').value.trim();
+    if (!v) { say('한 문장을 먼저 적어 주세요.'); return; }
+    const changed = v !== state.message; state.message = v; state.msgStatus = '후보';
+    if (changed && state.research !== 'running') state.research = 'suggest';
+    renderMessage(); say('메시지를 저장했어요.');
+  });
+
+  /* ───────── AI 자리: 조사 제안 한 줄 / 오류 안내 (규약 §6) ───────── */
+  const ERR = {
+    missing: { t: 'Claude Code를 찾지 못했어요', c: '이 컴퓨터에서 Claude Code 실행 파일을 찾을 수 없어요.',
+      fix: ['터미널에서 <code>npm install -g @anthropic-ai/claude-code</code> 로 설치해요. (공식 안내를 따라 설치해도 돼요)', '이미 설치했다면 설정 → 「Claude Code 실행 파일 경로」에 위치를 직접 적어요.', '다시 확인을 눌러요.'], retry: '다시 확인' },
+    login: { t: 'Claude Code에 로그인되어 있지 않아요', c: '실행은 되지만 계정 인증이 없어서 조사를 시작할 수 없어요.',
+      fix: ['터미널에서 <code>claude</code> 를 실행해 안내에 따라 로그인해요.', '로그인한 뒤 이 화면으로 돌아와 다시 시도를 눌러요.'], retry: '다시 시도' },
+    fail: { t: '조사를 끝내지 못했어요', c: 'Claude Code가 결과를 돌려주지 않았거나 형식이 달랐어요. 이미 붙은 카드는 그대로예요.',
+      fix: ['잠시 뒤 다시 시도해요.', '같은 일이 반복되면 메시지를 더 구체적인 한 문장으로 고쳐 보세요.'], retry: '다시 시도' },
+    net: { t: '인터넷에 연결되지 않았어요', c: '웹 검색이 필요한 조사를 할 수 없어요. 판과 카드는 그대로 쓸 수 있어요.',
+      fix: ['Wi-Fi나 네트워크 연결을 확인해요.', '연결되면 다시 시도를 눌러요.'], retry: '다시 시도' }
+  };
+  function errHTML(k, compact) {
+    const e = ERR[k];
+    return `<div class="errbox" role="alert"><span class="err-ic" aria-hidden="true">!</span><div>
+      <h3>${e.t}</h3><p class="cause">${e.c}</p>
+      <ol class="fix">${e.fix.map(f => `<li>${f}</li>`).join('')}</ol>
+      <p class="cont">${compact ? '아이디어를 쓰는 일은 지금도 그대로 할 수 있어요.' : '조사 없이도 메모 카드는 직접 붙일 수 있어요. 판 위 카드는 그대로 쓸 수 있어요.'}</p>
+      <div class="acts"><button class="btn primary" type="button" data-err="retry">${e.retry}</button><button class="btn" type="button" data-err="continue">직접 쓰기로 계속</button></div>
+    </div></div>`;
+  }
+  function bindErr(root) {
+    $$('[data-err]', root).forEach(b => b.onclick = () => {
+      if (b.dataset.err === 'retry') { setAI('ok'); say('다시 확인했어요. 이번에는 연결됐어요(시안).'); }
+      else { say('직접 쓰기로 계속해요.'); (state.now === 'board' ? $('#addMemo') : $('#newIdea')).focus(); }
+    });
+  }
+  function setAI(v) { state.ai = v; $('#aiState').value = v; renderAI(); renderErrSlots(); }
+  function renderErrSlots() { $$('.errbox-slot').forEach(s => { s.innerHTML = state.ai === 'ok' ? '' : errHTML(state.ai, true); bindErr(s); }); }
+  let researchTimer = null, added = 0;
+  function renderAI() {
+    const slot = $('#aiSlot'), s = state.research;
+    if (state.ai !== 'ok') { slot.innerHTML = errHTML(state.ai, false); bindErr(slot); return; }
+    let h;
+    if (!state.message) h = `<div class="research" data-state="nomsg"><span class="q">메시지를 먼저 적어 주세요</span><span class="sub">조사는 메시지(후보여도 돼요)가 있어야 시작해요. 위 칸에 한 문장을 적어 보세요.</span></div>`;
+    else if (s === 'suggest') h = `<div class="research" data-state="suggest"><span class="q">이 주제를 조사해 볼까요?</span><span class="sub">‘${esc(state.message)}’와 이어질 사례·자료를 웹에서 찾아 포스트잇으로 붙여 드려요.</span><span class="acts"><button class="btn primary" type="button" id="rsGo">조사하기</button><button class="btn ghost" type="button" id="rsLater">나중에</button></span></div>`;
+    else if (s === 'running') h = `<div class="research" data-state="running"><span class="dot" aria-hidden="true"></span><span class="q">조사하는 중이에요</span><span class="sub" id="rsSub">${added}장 붙었어요. 기다리는 동안 판은 그대로 만져도 돼요.</span><span class="acts"><button class="btn" type="button" id="rsStop">중단</button></span></div>`;
+    else if (s === 'stopped') h = `<div class="research"><span class="q">조사를 멈췄어요</span><span class="sub">이미 붙은 ${added}장은 그대로 두었어요.</span><span class="acts"><button class="btn" type="button" id="rsGo">이어서 찾기</button></span></div>`;
+    else if (s === 'done') h = `<div class="research"><span class="q">${added}장을 붙였어요</span><span class="sub">새 카드에는 ‘새로’ 표시가 있어요. 마음에 드는 카드는 고정해 두세요.</span><span class="acts"><button class="btn" type="button" id="rsMore">더 찾기</button></span></div>`;
+    else h = `<div class="research"><span class="q">조사 카드가 더 필요하신가요?</span><span class="sub">원할 때 언제든 조사할 수 있어요.</span><span class="acts"><button class="btn" type="button" id="rsGo">조사하기</button></span></div>`;
+    slot.innerHTML = h;
+    $('#rsGo')?.addEventListener('click', startResearch);
+    $('#rsMore')?.addEventListener('click', () => say('이 시안에는 예시 카드를 모두 붙였어요.'));
+    $('#rsLater')?.addEventListener('click', () => { state.research = 'idle'; renderAI(); $('#rsGo')?.focus(); });
+    $('#rsStop')?.addEventListener('click', stopResearch);
+  }
+  function startResearch() {
+    if (!queue.length) { state.research = 'done'; added = 0; renderAI(); say('이 시안에는 예시 카드를 모두 붙였어요.'); return; }
+    state.research = 'running'; added = 0; renderAI(); $('#rsStop')?.focus();
+    const step = () => {
+      const c = queue.shift(); if (!c) { finishResearch(); return; }
+      cards.push(c); buildCard(c); attach(c, { fresh: true }); paintAll(); added++;
+      $('#rsSub') && ($('#rsSub').textContent = `${added}장 붙었어요. 기다리는 동안 판은 그대로 만져도 돼요.`);
+      say(`새 카드가 붙었어요: ${title(c)} (${posText(c.id)})`);
+      researchTimer = queue.length ? setTimeout(step, 1100) : setTimeout(finishResearch, 700);
+    };
+    researchTimer = setTimeout(step, 900);
+  }
+  function finishResearch() { clearTimeout(researchTimer); state.research = 'done'; renderAI(); }
+  function stopResearch() { clearTimeout(researchTimer); state.research = 'stopped'; renderAI(); $('#rsGo')?.focus(); say('조사를 멈췄어요. 이미 붙은 카드는 그대로예요.'); }
+
+  /* ───────── 보기 방식 ───────── */
+  function setView(mode, byUser) {
+    if (byUser) state.userView = true;
+    const list = mode === 'list';
+    frame.classList.toggle('list-mode', list);
+    $('#viewBoard').setAttribute('aria-pressed', !list); $('#viewList').setAttribute('aria-pressed', list);
+    $('#canvas').setAttribute('aria-label', list ? '카드 목록' : '카드 판');
+    sizeCanvas(); requestAnimationFrame(() => { drawThreads(); drawMini(); refreshMeta(); });
+  }
+  $('#viewBoard').onclick = () => setView('board', true);
+  $('#viewList').onclick = () => setView('list', true);
+  function autoView() { if (!state.userView) setView(shell.getBoundingClientRect().width < 720 ? 'list' : 'board'); }
+  new ResizeObserver(() => { autoView(); sizeCanvas(); drawThreads(); drawMini(); }).observe(shell);
+  $$('[data-jump]').forEach(b => b.onclick = () => { const t = $(b.dataset.jump); t.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }); });
+
+  /* ───────── 목록, 시작점 (규약 §1: nautilus 역추적으로 연결) ───────── */
+  const IDEAS = [
+    { t: '퇴근길의 작은 친절이 하루를 바꾼다', stage: 1, cand: true, when: '방금 전', info: '카드 9장 · 조각 2개', open: true },
+    { t: '왜 우리는 월요일마다 같은 결심을 반복할까?', stage: 1, cand: true, q: true, when: '어제', info: '카드 3장 · 조각 2개' },
+    { t: '메모는 쓰는 순간이 아니라 다시 읽는 순간에 쓸모가 생긴다', stage: 2, when: '3일 전', info: '카드 11장 · 조각 6개' },
+    { t: '첫 책을 낼 때 가장 먼저 버려야 하는 것', stage: 3, when: '지난주', info: '초안 쓰는 중' },
+    { t: '새 아이디어 2026-10-12 21-04', stage: 0, warn: '식별 정보 없음', when: '2주 전', info: '읽기 전용' }
+  ];
+  function renderIdeas(empty) {
+    const ul = $('#ideas'); ul.innerHTML = '';
+    $('#emptyBlock').hidden = !empty; ul.hidden = empty;
+    $('#listSub').textContent = empty ? '아직 아이디어가 없어요. 「새 아이디어」로 시작해요.' : '이어서 쓸 아이디어를 고르거나 새로 시작해요.';
+    if (empty) { $('#newPanel').hidden = false; $('#newIdea').setAttribute('aria-expanded', 'true'); } else { $('#newPanel').hidden = true; $('#newIdea').setAttribute('aria-expanded', 'false'); $('#startForm').hidden = true; }
+    if (empty) return;
+    IDEAS.forEach(it => {
+      const li = document.createElement('li'); li.className = 'idea';
+      const meter = [1, 2, 3].map(n => `<b class="${n <= (it.warn ? 0 : Math.max(it.stage, 1)) ? 'on' : ''}"></b>`).join('');
+      li.innerHTML = `<button class="title" type="button">${esc(it.t)}</button>
+        <div class="meta"><span class="stage"><i aria-hidden="true">${meter}</i>${it.warn ? '' : ['', '작성 중', '메시지 확정', '얼개 확정'][it.stage]}</span>
+          ${it.cand ? `<span class="chip cand">${it.q ? '메시지 후보 · 질문형' : '메시지 후보'}</span>` : ''}
+          ${it.warn ? `<span class="chip warn">${it.warn}</span>` : ''}
+          <span>${it.when}</span><span>${it.info}</span></div>
+        <button class="btn go" type="button">${it.warn ? '식별 정보 복구' : '이어서 쓰기'}</button>`;
+      const openIt = () => { if (it.warn) { say('식별 정보를 복구하면 새 id가 발급돼요. 복구 전에는 읽기 전용이에요.'); return; } if (it.open) go('board'); else say('이 시안에서는 첫 번째 아이디어를 열어 볼 수 있어요.'); };
+      $$('button', li).forEach(b => b.onclick = openIt);
+      ul.appendChild(li);
+    });
+  }
+  $('#newIdea').onclick = () => { const p = $('#newPanel'), open = p.hidden; p.hidden = !open; $('#newIdea').setAttribute('aria-expanded', open); if (open) $('[data-start]', p).focus(); };
+  $$('[data-start]').forEach(b => b.onclick = () => {
+    const kind = b.dataset.start, message = kind === 'message', f = $('#startForm');
+    f.hidden = false;
+    f.innerHTML = `<label for="startTxt">${message ? '하고 싶은 말을 한 문장으로 적어 주세요' : '겪은 일이나 글감을 적어 주세요'}</label>
+      <p class="hint">${message ? '질문이어도 괜찮아요. 질문은 ‘메시지 후보’로 시작해요.' : '기사 링크를 붙여도 돼요. 메시지는 비워 두어도 돼요. 적은 내용은 「나의 이야기」 첫 조각이 돼요.'}</p>
+      <textarea id="startTxt" ${message ? 'required' : ''}></textarea>
+      <div class="row"><button class="btn ghost" type="button" data-x>닫기</button><button class="btn primary" type="submit">시작하기 — 첫 질문 받기</button></div>`;
+    $('#startTxt').focus(); $('[data-x]', f).onclick = () => { f.hidden = true; b.focus(); };
+    f.onsubmit = ev => {
+      ev.preventDefault(); const v = $('#startTxt').value.trim();
+      if (message && !v) { say('한 문장을 먼저 적어 주세요.'); return; }
+      const url = carry('../nautilus/index.html?step=story&start=' + kind + (v ? '&text=' + encodeURIComponent(v) : ''));
+      say('역추적 대화로 이동해요. 첫 질문이 기다리고 있어요.');
+      location.href = url;
+    };
+  });
+
+  /* ───────── 화면 전환 ───────── */
+  let attachedOnce = false;
+  function go(name, opts = {}) {
+    state.now = name; shell.dataset.now = name;
+    const isList = name === 'list' || name === 'empty';
+    $('[data-screen="list"]').hidden = !isList; $('[data-screen="board"]').hidden = isList;
+    $$('.devbar [data-go]').forEach(b => b.setAttribute('aria-pressed', b.dataset.go === name));
+    if (isList) { renderIdeas(name === 'empty'); renderErrSlots(); }
+    if (name === 'board') {
+      autoView(); sizeCanvas(); renderAI();
+      if (!attachedOnce) { attachedOnce = true; playIntro(); } else { drawThreads(); drawMini(); }
+    }
+    syncLinks();
+    if (!opts.quiet) {
+      if (name === 'board') setTimeout(() => ($('#rsGo') || $('#rsStop') || $('#msgInput'))?.focus({ preventScroll: true }), 40);
+      else setTimeout(() => $('#newIdea').focus({ preventScroll: true }), 20);
+    }
+  }
+  $$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+  $$('a[data-view]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); go(a.dataset.view); }));
+  $('#replay').onclick = () => { go('board'); attachedOnce = true; playIntro(); };
+  $('#aiState').onchange = e => setAI(e.target.value);
+  /* 판 상태 프리셋: 규약 외 검토용. ?preset=nomsg|empty|noresearch (경험 시작에서 넘어오는 빈 메시지는 ?message=none 도 같음) */
+  function applyPreset(p, quiet) {
+    const none = p === 'nomsg', empty = p === 'empty';
+    clearTimeout(researchTimer); state.message = none ? '' : MESSAGE0; state.msgStatus = '후보'; state.research = 'suggest'; added = 0;
+    if (!none && !empty) $('#cardScale').value = '9';
+    resetBoard(none || empty ? 0 : +$('#cardScale').value);
+    setAI(p === 'noresearch' ? 'missing' : 'ok'); renderMessage();
+    if (quiet) return;
+    attachedOnce = true; if (state.now !== 'board') go('board'); else playIntro();
+  }
+  $('#boardPreset').onchange = e => applyPreset(e.target.value);
+  $('#cardScale').onchange = e => { resetBoard(+e.target.value); attachedOnce = true; if (state.now !== 'board') go('board'); else playIntro(); };
+  function setW480(on) { cur.w480 = on; shell.classList.toggle('preview-480', on); $('#preview480').checked = on; state.userView = false; syncLinks(); requestAnimationFrame(() => { autoView(); sizeCanvas(); drawThreads(); drawMini(); }); }
+  $('#preview480').onchange = e => setW480(e.target.checked);
+
+  /* ───────── 시작 ───────── */
+  $('#themeLight').setAttribute('aria-pressed', cur.theme === 'light'); $('#themeDark').setAttribute('aria-pressed', cur.theme === 'dark');
+  if (Q.get('cards') === '50') $('#cardScale').value = '50';
+  resetBoard(Q.get('cards') === '50' ? 50 : 9);
+  renderMessage(); renderIdeas(false);
+  if (matchMedia('(max-width: 600px)').matches || Q.get('w480') === '1') $('#devbar').open = false;
+  if (Q.get('w480') === '1') { shell.classList.add('preview-480'); $('#preview480').checked = true; }
+  const v0 = Q.get('view'), view = ['list', 'empty', 'board', 'archive'].includes(v0) ? v0 : 'board';
+  const P0 = Q.get('preset') || (Q.get('message') === 'none' ? 'nomsg' : '');
+  if (['nomsg', 'empty', 'noresearch'].includes(P0)) { $('#boardPreset').value = P0; applyPreset(P0, true); }
+  if (Q.get('ai') && ERR[Q.get('ai')]) setAI(Q.get('ai'));
+  go(view === 'archive' ? 'board' : view, { quiet: true });
+  if (view === 'archive') setTimeout(openArchive, 900);
+  window.addEventListener('load', () => { sizeCanvas(); drawThreads(); drawMini(); });
+  document.fonts && document.fonts.ready.then(() => { sizeCanvas(); drawThreads(); drawMini(); });
+})();
+</script>
+</body>
+</html>
