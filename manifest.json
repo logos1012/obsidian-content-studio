@@ -1,0 +1,9 @@
+{
+  "id": "content-studio",
+  "name": "콘텐츠 스튜디오",
+  "version": "0.1.0",
+  "minAppVersion": "1.9.0",
+  "description": "아이디어 노트 하나로 LinkedIn·Threads·Instagram·뉴스레터·쇼츠 콘텐츠를 쓰고 관리합니다.",
+  "author": "Jake",
+  "isDesktopOnly": true
+}

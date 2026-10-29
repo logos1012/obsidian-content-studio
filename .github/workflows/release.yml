@@ -1,0 +1,28 @@
+name: Release
+
+# Push a tag equal to manifest.json's version (e.g. 0.1.0). BRAT installs the
+# main.js, manifest.json and styles.css attached to the GitHub release.
+on:
+  push:
+    tags: ['*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Tag matches manifest version
+        run: test "$(node -p "require('./manifest.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm run package
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "$GITHUB_REF_NAME" --generate-notes
